@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "manifestVersion": "2026.05.06.8",
+  "manifestVersion": "2026.05.06.9",
   "minimumToolVersion": "0.3.0",
 
   "wallpaper": {
@@ -10,7 +10,61 @@
   },
 
   "folders": [
-    { "path": "Documents/Jam Coding", "createIfMissing": true }
+    { "path": "Documents/St Augustines/Year 1",      "createIfMissing": true },
+    { "path": "Documents/St Augustines/Year 2",      "createIfMissing": true },
+    { "path": "Documents/St Augustines/Year 3",      "createIfMissing": true },
+    { "path": "Documents/St Augustines/Year 4",      "createIfMissing": true },
+    { "path": "Documents/St Augustines/Year 5",      "createIfMissing": true },
+    { "path": "Documents/St Augustines/Year 6",      "createIfMissing": true },
+
+    { "path": "Documents/Waverley Abbey/Year 1",     "createIfMissing": true },
+    { "path": "Documents/Waverley Abbey/Year 2",     "createIfMissing": true },
+    { "path": "Documents/Waverley Abbey/Year 3",     "createIfMissing": true },
+    { "path": "Documents/Waverley Abbey/Year 4",     "createIfMissing": true },
+    { "path": "Documents/Waverley Abbey/Year 5",     "createIfMissing": true },
+    { "path": "Documents/Waverley Abbey/Year 6",     "createIfMissing": true },
+
+    { "path": "Documents/Prior Heath/Year 1",        "createIfMissing": true },
+    { "path": "Documents/Prior Heath/Year 2",        "createIfMissing": true },
+    { "path": "Documents/Prior Heath/Year 3",        "createIfMissing": true },
+    { "path": "Documents/Prior Heath/Year 4",        "createIfMissing": true },
+    { "path": "Documents/Prior Heath/Year 5",        "createIfMissing": true },
+    { "path": "Documents/Prior Heath/Year 6",        "createIfMissing": true },
+
+    { "path": "Documents/Tavistock/Year 1",          "createIfMissing": true },
+    { "path": "Documents/Tavistock/Year 2",          "createIfMissing": true },
+    { "path": "Documents/Tavistock/Year 3",          "createIfMissing": true },
+    { "path": "Documents/Tavistock/Year 4",          "createIfMissing": true },
+    { "path": "Documents/Tavistock/Year 5",          "createIfMissing": true },
+    { "path": "Documents/Tavistock/Year 6",          "createIfMissing": true },
+
+    { "path": "Documents/William Cobbett/Year 1",    "createIfMissing": true },
+    { "path": "Documents/William Cobbett/Year 2",    "createIfMissing": true },
+    { "path": "Documents/William Cobbett/Year 3",    "createIfMissing": true },
+    { "path": "Documents/William Cobbett/Year 4",    "createIfMissing": true },
+    { "path": "Documents/William Cobbett/Year 5",    "createIfMissing": true },
+    { "path": "Documents/William Cobbett/Year 6",    "createIfMissing": true },
+
+    { "path": "Documents/Chandler Junior/Year 1",    "createIfMissing": true },
+    { "path": "Documents/Chandler Junior/Year 2",    "createIfMissing": true },
+    { "path": "Documents/Chandler Junior/Year 3",    "createIfMissing": true },
+    { "path": "Documents/Chandler Junior/Year 4",    "createIfMissing": true },
+    { "path": "Documents/Chandler Junior/Year 5",    "createIfMissing": true },
+    { "path": "Documents/Chandler Junior/Year 6",    "createIfMissing": true },
+
+    { "path": "Documents/Heatherside Infants/Year 1","createIfMissing": true },
+    { "path": "Documents/Heatherside Infants/Year 2","createIfMissing": true },
+    { "path": "Documents/Heatherside Infants/Year 3","createIfMissing": true },
+    { "path": "Documents/Heatherside Infants/Year 4","createIfMissing": true },
+    { "path": "Documents/Heatherside Infants/Year 5","createIfMissing": true },
+    { "path": "Documents/Heatherside Infants/Year 6","createIfMissing": true },
+
+    { "path": "Documents/Heatherside Junior/Year 1", "createIfMissing": true },
+    { "path": "Documents/Heatherside Junior/Year 2", "createIfMissing": true },
+    { "path": "Documents/Heatherside Junior/Year 3", "createIfMissing": true },
+    { "path": "Documents/Heatherside Junior/Year 4", "createIfMissing": true },
+    { "path": "Documents/Heatherside Junior/Year 5", "createIfMissing": true },
+    { "path": "Documents/Heatherside Junior/Year 6", "createIfMissing": true }
   ],
 
   "programs": [
@@ -167,7 +221,11 @@
     "documentsAllowlist": {
       "enabled": true,
       "quarantineFolder": "Documents/_unsorted",
-      "allowedSubfolders": ["Jam Coding", "Pivot Animator v5"],
+      "allowedSubfolders": [
+        "St Augustines", "Waverley Abbey", "Prior Heath", "Tavistock",
+        "William Cobbett", "Chandler Junior", "Heatherside Infants", "Heatherside Junior",
+        "Pivot Animator v5"
+      ],
       "allowedFiles": ["desktop.ini"]
     },
     "resetWallpaperIfChanged": true
