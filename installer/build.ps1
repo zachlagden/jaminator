@@ -43,6 +43,7 @@ try {
     & wix build "$repoRoot\installer\installer.wxs" `
         -d "Version=$version" `
         -d "SourceDir=$binDir" `
+        -bindpath "$repoRoot\installer" `
         -ext WixToolset.UI.wixext `
         -arch x64 `
         -o $msi

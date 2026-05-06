@@ -38,10 +38,12 @@
       <ComponentGroupRef Id="JaminatorShortcut" />
     </Feature>
 
-    <!-- Standard Welcome → Install → Progress → Finish wizard. WixUI_Minimal
-         keeps it short (3 dialogs) which suits a single-purpose tool. -->
+    <!-- Welcome+EULA combined → Install → Progress → Finish.
+         WixUI_Minimal renders the EULA RTF on the welcome screen with an
+         "I accept" radio that gates the Install button. -->
     <ui:WixUI Id="WixUI_Minimal" />
     <UIRef Id="WixUI_ErrorProgressText" />
+    <WixVariable Id="WixUILicenseRtf" Value="EULA.rtf" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open Jaminator now" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
 

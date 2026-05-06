@@ -1,0 +1,51 @@
+Copyright (c) 2026 Zachariah Michael Lagden. All Rights Reserved.
+
+Jaminator (the "Software") is the proprietary work of Zachariah Michael
+Lagden, made available under the Jam Coding name. The Software is
+intended exclusively for use by Jam Coding and its authorised operators
+on devices owned or managed by Jam Coding.
+
+The source code is published at https://github.com/zachlagden/jaminator
+for the purposes of transparency and auditability. Publication does not
+constitute a grant of any of the following rights to any third party:
+
+  - running the Software on devices not operated by or for Jam Coding;
+  - copying, modifying, or creating derivative works based on the
+    Software, except for personal study or for the purpose of submitting
+    a contribution back to the canonical repository under terms accepted
+    by the copyright holder;
+  - redistributing the Software or any derivative thereof, in source or
+    compiled form, by any medium;
+  - using the Software's name ("Jaminator"), the Jam Coding brand, or
+    associated artwork (including but not limited to the wallpaper image
+    distributed alongside the Software) in any other product, service,
+    or distribution;
+  - removing, obscuring, or altering this copyright notice or any
+    notice contained within the Software or its documentation.
+
+Any use, copying, modification, or distribution outside the scope
+described above requires prior written permission from the copyright
+holder.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS
+OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE, AND NONINFRINGEMENT.
+IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES,
+OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT, OR OTHERWISE,
+ARISING FROM, OUT OF, OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR
+OTHER DEALINGS IN THE SOFTWARE.
+
+The Software performs administrative actions on the host device,
+including (without limitation) installing and removing software,
+modifying registry settings, applying scheduled tasks, replacing the
+desktop wallpaper, deleting files in temporary directories, and
+quarantining files in the user's Documents folder. By installing or
+running the Software, the operator acknowledges and accepts the risk
+of such modifications.
+
+The Software fetches its instructions ("manifest") at runtime from the
+canonical repository identified above. Any party with write access to
+that repository can therefore cause arbitrary administrative commands
+to be executed on every device running the Software. The operator
+acknowledges and accepts that write access to the repository must be
+treated as administrative access to every such device.
