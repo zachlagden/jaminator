@@ -16,6 +16,7 @@ namespace Jaminator.Services
     public static class Installer
     {
         public const string TaskName = "Jaminator-Login";
+        public const string DailyTaskName = "Jaminator-Daily";
 
         public static string InstallDir =>
             Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.ProgramFiles), "Jaminator");
@@ -167,14 +168,136 @@ namespace Jaminator.Services
             try
             {
                 RunSchTasks($"/Delete /TN \"{TaskName}\" /F", allowFailure: true);
-                log.Info("Scheduled task removed");
+                RunSchTasks($"/Delete /TN \"{DailyTaskName}\" /F", allowFailure: true);
+                log.Info("Scheduled tasks removed");
                 return 0;
             }
             catch (Exception ex)
             {
                 log.Warn("Could not remove scheduled task: " + ex.Message);
-                return 0; // don't fail uninstall on this
+                return 0;
             }
+        }
+
+        // ---------- Daily Run All task (reconciled from manifest at every logon) ----------
+
+        /// <summary>
+        /// Ensures a daily "run everything" scheduled task exists at <paramref name="hhmm"/>.
+        /// Pass null to remove the task. Idempotent — re-calling with the same time is a no-op.
+        /// </summary>
+        public static void ReconcileDailyTask(string? hhmm, Logger log)
+        {
+            if (string.IsNullOrWhiteSpace(hhmm))
+            {
+                if (DailyTaskExists())
+                {
+                    RunSchTasks($"/Delete /TN \"{DailyTaskName}\" /F", allowFailure: true);
+                    log.Info("Daily auto-run task removed (manifest disabled it)");
+                }
+                return;
+            }
+
+            // Validate format strictly so we never write a malformed task XML.
+            if (!System.Text.RegularExpressions.Regex.IsMatch(hhmm!, @"^\d{2}:\d{2}$"))
+            {
+                log.Warn($"Invalid schedule.dailyRunAll value '{hhmm}' (expected HH:MM); skipping.");
+                return;
+            }
+
+            if (DailyTaskRunsAt(hhmm!))
+            {
+                log.Info($"Daily auto-run already scheduled at {hhmm}");
+                return;
+            }
+
+            var xml = $@"<?xml version=""1.0"" encoding=""UTF-16""?>
+<Task version=""1.4"" xmlns=""http://schemas.microsoft.com/windows/2004/02/mit/task"">
+  <RegistrationInfo>
+    <Description>Jaminator daily 'Run All' (full cleanup, app installs, admin commands)</Description>
+    <Author>Jam Coding</Author>
+  </RegistrationInfo>
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>2026-01-01T{hhmm}:00</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id=""Author"">
+      <UserId>S-1-5-18</UserId>
+      <RunLevel>HighestAvailable</RunLevel>
+    </Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <AllowHardTerminate>true</AllowHardTerminate>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <RunOnlyIfNetworkAvailable>false</RunOnlyIfNetworkAvailable>
+    <IdleSettings>
+      <StopOnIdleEnd>false</StopOnIdleEnd>
+      <RestartOnIdle>false</RestartOnIdle>
+    </IdleSettings>
+    <AllowStartOnDemand>true</AllowStartOnDemand>
+    <Enabled>true</Enabled>
+    <Hidden>false</Hidden>
+    <RunOnlyIfIdle>false</RunOnlyIfIdle>
+    <WakeToRun>false</WakeToRun>
+    <ExecutionTimeLimit>PT1H</ExecutionTimeLimit>
+    <Priority>7</Priority>
+  </Settings>
+  <Actions Context=""Author"">
+    <Exec>
+      <Command>{InstalledExe}</Command>
+      <Arguments>--run-all</Arguments>
+      <WorkingDirectory>{InstallDir}</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>";
+
+            var xmlPath = Path.Combine(Path.GetTempPath(), $"jaminator-daily-{Guid.NewGuid():N}.xml");
+            File.WriteAllText(xmlPath, xml, System.Text.Encoding.Unicode);
+            try
+            {
+                RunSchTasks($"/Create /TN \"{DailyTaskName}\" /XML \"{xmlPath}\" /F");
+                log.Info($"Daily auto-run scheduled for {hhmm}");
+            }
+            catch (Exception ex) { log.Warn("Could not register daily task: " + ex.Message); }
+            finally { try { File.Delete(xmlPath); } catch { } }
+        }
+
+        private static bool DailyTaskExists()
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("schtasks.exe",
+                    $"/Query /TN \"{DailyTaskName}\"")
+                { UseShellExecute = false, CreateNoWindow = true,
+                  RedirectStandardOutput = true, RedirectStandardError = true };
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                p.WaitForExit();
+                return p.ExitCode == 0;
+            }
+            catch { return false; }
+        }
+
+        private static bool DailyTaskRunsAt(string hhmm)
+        {
+            try
+            {
+                var psi = new System.Diagnostics.ProcessStartInfo("schtasks.exe",
+                    $"/Query /TN \"{DailyTaskName}\" /V /FO LIST")
+                { UseShellExecute = false, CreateNoWindow = true,
+                  RedirectStandardOutput = true, RedirectStandardError = true };
+                using var p = System.Diagnostics.Process.Start(psi)!;
+                var output = p.StandardOutput.ReadToEnd();
+                p.WaitForExit();
+                if (p.ExitCode != 0) return false;
+                return output.Contains($"{hhmm}:00");
+            }
+            catch { return false; }
         }
 
         // ---------- Start Menu shortcut (only used by self-installer; MSI does its own) ----------

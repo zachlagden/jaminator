@@ -75,9 +75,23 @@ namespace Jaminator.Services
         private long WipeContents(string dir)
         {
             if (!Directory.Exists(dir)) { _log.Info($"  skip (missing): {dir}"); return 0; }
-
             long freed = 0;
-            foreach (var f in EnumerateFilesSafe(dir))
+            // Manual recursive walk so per-directory access-denied (e.g. INetCache\Content.IE5
+            // which has special ACLs) doesn't abort the whole wipe.
+            WalkAndDelete(dir, isRoot: true, ref freed);
+            _log.Info($"  cleaned: {dir}");
+            return freed;
+        }
+
+        private void WalkAndDelete(string dir, bool isRoot, ref long freed)
+        {
+            string[] files, subdirs;
+            try { files = Directory.GetFiles(dir); }
+            catch (UnauthorizedAccessException) { return; }
+            catch (DirectoryNotFoundException) { return; }
+            catch { return; }
+
+            foreach (var f in files)
             {
                 try
                 {
@@ -85,14 +99,19 @@ namespace Jaminator.Services
                     File.Delete(f);
                     freed += size;
                 }
-                catch { /* in use */ }
+                catch { /* locked / denied — skip */ }
             }
-            foreach (var d in EnumerateDirsSafe(dir))
+
+            try { subdirs = Directory.GetDirectories(dir); }
+            catch { return; }
+
+            foreach (var d in subdirs) WalkAndDelete(d, isRoot: false, ref freed);
+
+            // Don't delete the root path itself (it's a known temp dir we want to keep).
+            if (!isRoot)
             {
-                try { Directory.Delete(d, recursive: true); } catch { }
+                try { Directory.Delete(dir); } catch { }
             }
-            _log.Info($"  cleaned: {dir}");
-            return freed;
         }
 
         // ---------- Browser cache ----------

@@ -14,6 +14,7 @@ namespace Jaminator.UI
         private Label _manifestVersionLabel = null!;
         private Button _installButton = null!;
         private Button _uninstallButton = null!;
+        private Button _checkUpdatesButton = null!;
 
         private SplitContainer _split = null!;
         private Panel _sectionsHost = null!;
@@ -104,18 +105,37 @@ namespace Jaminator.UI
             };
             _uninstallButton.FlatAppearance.BorderSize = 0;
 
+            _checkUpdatesButton = new Button
+            {
+                Text = "Check for updates",
+                Width = 140, Height = 32,
+                BackColor = Color.FromArgb(60, 60, 65),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            _checkUpdatesButton.FlatAppearance.BorderSize = 0;
+
             _headerBar.Controls.Add(_titleLabel);
             _headerBar.Controls.Add(_manifestVersionLabel);
             _headerBar.Controls.Add(_installButton);
             _headerBar.Controls.Add(_uninstallButton);
+            _headerBar.Controls.Add(_checkUpdatesButton);
             _headerBar.Resize += (_, _) =>
             {
                 Button? activeBtn = _installButton.Visible ? _installButton :
                                    _uninstallButton.Visible ? _uninstallButton : null;
+                int rightEdge = _headerBar.Width - 16;
                 if (activeBtn != null)
-                    activeBtn.Location = new Point(_headerBar.Width - activeBtn.Width - 16, 12);
-                var vrEnd = activeBtn != null ? activeBtn.Left : _headerBar.Width - 16;
-                _manifestVersionLabel.Location = new Point(vrEnd - _manifestVersionLabel.Width - 12, 0);
+                {
+                    activeBtn.Location = new Point(rightEdge - activeBtn.Width, 12);
+                    rightEdge = activeBtn.Left - 8;
+                }
+                _checkUpdatesButton.Location = new Point(rightEdge - _checkUpdatesButton.Width, 12);
+                rightEdge = _checkUpdatesButton.Left - 12;
+                _manifestVersionLabel.Location = new Point(rightEdge - _manifestVersionLabel.Width, 0);
             };
 
             // ---------- Sections (top half of split) ----------

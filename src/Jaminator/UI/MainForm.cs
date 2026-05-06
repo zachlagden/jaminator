@@ -72,6 +72,7 @@ namespace Jaminator.UI
             _runAllButton.Click += async (_, _) => await RunAllAsync();
             _installButton.Click += OnInstallClick;
             _uninstallButton.Click += OnUninstallClick;
+            _checkUpdatesButton.Click += async (_, _) => await OnCheckUpdatesClickAsync();
         }
 
         private void UpdateHeaderButtonsVisibility()
@@ -99,11 +100,23 @@ namespace Jaminator.UI
             // Block until we can actually reach GitHub. Without internet, every
             // section is broken (manifest fetch fails, downloads fail) — better
             // to show a clear "no internet" state than half-fail everywhere.
-            await _gate.WaitUntilOnlineAsync(online =>
+            //
+            // UI mode: poll forever — there's a real human watching the overlay.
+            // CLI modes: bound the wait so a scheduled run never hangs the box.
+            var maxWait = (Program.Mode == Program.RunMode.RunAll || Program.LoginModeOnly)
+                ? (TimeSpan?)TimeSpan.FromMinutes(5)
+                : null;
+            var online = await _gate.WaitUntilOnlineAsync(o =>
             {
-                if (InvokeRequired) { BeginInvoke(new Action(() => SetOfflineOverlay(!online))); return; }
-                SetOfflineOverlay(!online);
-            });
+                if (InvokeRequired) { BeginInvoke(new Action(() => SetOfflineOverlay(!o))); return; }
+                SetOfflineOverlay(!o);
+            }, maxWait);
+
+            if (!online)
+            {
+                _log.Error("No network — exiting (CLI mode, max wait elapsed)");
+                if (Program.ExitAfterRun) { Application.Exit(); return; }
+            }
 
             // Auto-update only in interactive UI mode. Logon-time auto-runs must
             // never trigger a Windows Installer dialog while a kid is logging in.
@@ -134,6 +147,14 @@ namespace Jaminator.UI
                         _log.Info("CLI flag --run-all: executing all sections automatically");
 
                     await RunAllAsync();
+
+                    // Login-mode also reconciles the daily auto-run task per the manifest's
+                    // schedule.dailyRunAll setting. Doing this every login means changing
+                    // the time in manifest.json propagates to every laptop without ceremony.
+                    if (Program.LoginModeOnly && _manifest.Schedule != null)
+                    {
+                        Installer.ReconcileDailyTask(_manifest.Schedule.DailyRunAll, _log);
+                    }
 
                     if (Program.ExitAfterRun)
                     {
@@ -202,6 +223,32 @@ namespace Jaminator.UI
                                         "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
                 }));
             });
+        }
+
+        private async Task OnCheckUpdatesClickAsync()
+        {
+            _checkUpdatesButton.Enabled = false;
+            var prevText = _checkUpdatesButton.Text;
+            _checkUpdatesButton.Text = "Checking…";
+            try
+            {
+                var info = await _updater.CheckAsync(Program.ToolVersion);
+                if (info != null)
+                {
+                    _log.Info($"Update available: {info.Version} — applying");
+                    AutoApplyUpdate(info);
+                }
+                else
+                {
+                    MessageBox.Show($"You're on the latest version ({Program.ToolVersion}).",
+                                    "Up to date", MessageBoxButtons.OK, MessageBoxIcon.Information);
+                }
+            }
+            finally
+            {
+                _checkUpdatesButton.Text = prevText;
+                _checkUpdatesButton.Enabled = true;
+            }
         }
 
         private void OnUninstallClick(object? sender, EventArgs e)
@@ -291,8 +338,12 @@ namespace Jaminator.UI
                 : (Color.FromArgb(120, 120, 120), "");
 
             var panel = new SectionPanel(id, title, accent);
-            // Show what the action does first (concrete), then the manifest-derived contents
-            panel.SetSubtitle(string.IsNullOrEmpty(help) ? subtitle : help + "  ·  " + subtitle);
+            // Single-line subtitle that fits in the panel's available width.
+            // Help text (one sentence) is preferred; manifest detail goes in tooltip.
+            panel.SetSubtitle(string.IsNullOrEmpty(help) ? subtitle : help);
+            new ToolTip().SetToolTip(panel.SubtitleLabel,
+                string.IsNullOrEmpty(subtitle) ? help : subtitle);
+
             panel.RunHandler = handler;
             panel.CheckedChanged += (_, _) => UpdateRunAllButtonText();
 

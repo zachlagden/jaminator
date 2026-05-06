@@ -30,13 +30,17 @@ namespace Jaminator.Services
         /// Polls until the probe URL responds OK. Calls <paramref name="onStateChange"/>
         /// with true=online, false=offline whenever the state changes.
         /// </summary>
-        public async Task WaitUntilOnlineAsync(Action<bool> onStateChange, CancellationToken ct = default)
+        public async Task<bool> WaitUntilOnlineAsync(
+            Action<bool> onStateChange,
+            TimeSpan? maxWait = null,
+            CancellationToken ct = default)
         {
+            var deadline = maxWait.HasValue
+                ? DateTime.UtcNow + maxWait.Value
+                : (DateTime?)null;
             var wasOnline = (bool?)null;
-            var attempt = 0;
             while (!ct.IsCancellationRequested)
             {
-                attempt++;
                 var ok = await ProbeOnceAsync().ConfigureAwait(false);
                 if (ok != wasOnline)
                 {
@@ -46,11 +50,18 @@ namespace Jaminator.Services
                         ? "Network: online"
                         : "Network: offline — retrying every 10s");
                 }
-                if (ok) return;
+                if (ok) return true;
+
+                if (deadline.HasValue && DateTime.UtcNow >= deadline.Value)
+                {
+                    _log.Warn($"Gave up waiting for network after {maxWait!.Value.TotalSeconds:N0}s");
+                    return false;
+                }
 
                 try { await Task.Delay(TimeSpan.FromSeconds(10), ct).ConfigureAwait(false); }
-                catch (TaskCanceledException) { return; }
+                catch (TaskCanceledException) { return false; }
             }
+            return false;
         }
 
         private async Task<bool> ProbeOnceAsync()

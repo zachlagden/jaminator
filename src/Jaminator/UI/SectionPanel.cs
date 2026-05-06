@@ -65,7 +65,11 @@ namespace Jaminator.UI
             {
                 Text = "",
                 Location = new Point(40, 36),
-                AutoSize = true,
+                // Fixed-size single line that ellipses when too long, so it can never
+                // overflow into the right-hand status pill / Run button.
+                AutoSize = false,
+                AutoEllipsis = true,
+                Size = new Size(400, 22),
                 Font = new Font("Segoe UI", 9F),
                 ForeColor = Color.FromArgb(170, 170, 170),
                 BackColor = Color.Transparent
@@ -111,6 +115,9 @@ namespace Jaminator.UI
         {
             RunButton.Location = new Point(Width - RunButton.Width - 12, 18);
             StatusLabel.Location = new Point(RunButton.Left - StatusLabel.Width - 14, 24);
+            // Keep subtitle from running under the status / Run column
+            var maxSubtitleW = StatusLabel.Left - SubtitleLabel.Left - 16;
+            if (maxSubtitleW > 100) SubtitleLabel.Width = maxSubtitleW;
         }
 
         public void SetSubtitle(string text) => SubtitleLabel.Text = text;

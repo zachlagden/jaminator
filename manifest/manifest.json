@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "manifestVersion": "2026.05.06.4",
+  "manifestVersion": "2026.05.06.6",
   "minimumToolVersion": "0.3.0",
 
   "wallpaper": {
@@ -35,7 +35,7 @@
         ]
       },
       "detect": {
-        "filePath": "%ProgramFiles(x86)%\\Microsoft Research\\Kodu Game Lab\\Kodu.exe"
+        "filePath": "%ProgramFiles(x86)%\\InfiniteInstant\\Kodu Game Lab\\Boku.exe"
       }
     },
 
@@ -95,8 +95,7 @@
         "args": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
       },
       "detect": {
-        "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Construct 2_is1",
-        "minVersion": "1.0.280.0"
+        "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Construct 2_is1"
       }
     },
 
@@ -141,6 +140,11 @@
       "script": "$bloat=@('Microsoft.BingWeather','Microsoft.BingNews','Microsoft.BingSearch','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.MicrosoftSolitaireCollection','Microsoft.People','Microsoft.SkypeApp','Microsoft.WindowsFeedbackHub','Microsoft.WindowsMaps','Microsoft.YourPhone','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.MicrosoftOfficeHub','Microsoft.Microsoft3DViewer','Microsoft.MixedReality.Portal'); foreach($n in $bloat){ Get-AppxPackage -AllUsers $n -EA 0 | Remove-AppxPackage -AllUsers -EA 0; Get-AppxProvisionedPackage -Online -EA 0 | Where-Object { $_.DisplayName -eq $n } | Remove-AppxProvisionedPackage -Online -EA 0 | Out-Null }"
     }
   ],
+
+  "schedule": {
+    "dailyRunAll": "03:00",
+    "maxNetworkWaitMinutes": 5
+  },
 
   "cleanup": {
     "tempPaths": [

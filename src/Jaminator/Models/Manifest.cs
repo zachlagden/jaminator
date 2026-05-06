@@ -13,6 +13,16 @@ namespace Jaminator.Models
         [JsonProperty("programs")] public List<ProgramEntry> Programs { get; set; } = new();
         [JsonProperty("commands")] public List<CommandEntry> Commands { get; set; } = new();
         [JsonProperty("cleanup")] public CleanupEntry? Cleanup { get; set; }
+        [JsonProperty("schedule")] public ScheduleEntry? Schedule { get; set; }
+    }
+
+    public sealed class ScheduleEntry
+    {
+        /// <summary>"HH:MM" 24-hour, e.g. "03:00". Null/empty disables the daily auto-run.</summary>
+        [JsonProperty("dailyRunAll")] public string? DailyRunAll { get; set; }
+
+        /// <summary>Bound on how long the daily run waits for internet before giving up.</summary>
+        [JsonProperty("maxNetworkWaitMinutes")] public int MaxNetworkWaitMinutes { get; set; } = 5;
     }
 
     public sealed class WallpaperEntry
