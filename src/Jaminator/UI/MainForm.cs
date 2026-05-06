@@ -207,25 +207,21 @@ namespace Jaminator.UI
             ShowFirstRunWelcomeIfNeeded();
             ShowLastLoginRunIndicator();
 
-            // Block until we can actually reach GitHub. Without internet, every
-            // section is broken (manifest fetch fails, downloads fail) — better
-            // to show a clear "no internet" state than half-fail everywhere.
+            // Internet gate only blocks the interactive UI — there's a human
+            // watching, so an explicit "no internet" overlay is the right call.
             //
-            // UI mode: poll forever — there's a real human watching the overlay.
-            // CLI modes: bound the wait so a scheduled run never hangs the box.
-            var maxWait = (Program.Mode == Program.RunMode.RunAll || Program.LoginModeOnly)
-                ? (TimeSpan?)TimeSpan.FromMinutes(5)
-                : null;
-            var online = await _gate.WaitUntilOnlineAsync(o =>
+            // CLI modes (--login-mode, --run-all) skip the gate entirely:
+            // logon during a lesson with flaky WiFi must still set the wallpaper
+            // and create folders. The ManifestFetcher falls back to a cached
+            // copy when offline; each section deals with download failures
+            // independently (graceful per-program/per-MSI skip).
+            if (Program.Mode == Program.RunMode.Ui)
             {
-                if (InvokeRequired) { BeginInvoke(new Action(() => SetOfflineOverlay(!o))); return; }
-                SetOfflineOverlay(!o);
-            }, maxWait);
-
-            if (!online)
-            {
-                _log.Error("No network — exiting (CLI mode, max wait elapsed)");
-                if (Program.ExitAfterRun) { Application.Exit(); return; }
+                await _gate.WaitUntilOnlineAsync(o =>
+                {
+                    if (InvokeRequired) { BeginInvoke(new Action(() => SetOfflineOverlay(!o))); return; }
+                    SetOfflineOverlay(!o);
+                });
             }
 
             // Auto-update only in interactive UI mode. Logon-time auto-runs must
@@ -242,9 +238,13 @@ namespace Jaminator.UI
             _log.Info($"Fetching manifest: {Program.ManifestUrl}");
             try
             {
-                _manifest = await _fetcher.FetchAsync(Program.ManifestUrl);
-                _log.Info($"Manifest version: {_manifest.ManifestVersion}");
-                _manifestVersionLabel.Text = $"Manifest: {_manifest.ManifestVersion}";
+                var (manifest, fromCache) = await _fetcher.FetchAsync(Program.ManifestUrl);
+                _manifest = manifest;
+                _log.Info(fromCache
+                    ? $"Manifest version: {_manifest.ManifestVersion} (offline — using cached copy)"
+                    : $"Manifest version: {_manifest.ManifestVersion}");
+                _manifestVersionLabel.Text = $"Manifest: {_manifest.ManifestVersion}"
+                    + (fromCache ? " (cached)" : "");
                 BuildSections(_manifest);
                 UpdateRunAllButtonText();
                 _runAllButton.Enabled = true;
