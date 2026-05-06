@@ -198,10 +198,10 @@ namespace Jaminator.UI
             };
             _viewLogsButton.FlatAppearance.BorderSize = 0;
             _logLabel.Controls.Add(_viewLogsButton);
-            _logLabel.Resize += (_, _) =>
-            {
-                _viewLogsButton.Location = new Point(_logLabel.Width - _viewLogsButton.Width - 8, 3);
-            };
+            // SizeChanged fires on initial layout (Resize doesn't), so the button
+            // is positioned correctly the first time the form paints — same fix
+            // as the header buttons.
+            _logLabel.SizeChanged += (_, _) => LayoutViewLogsButton();
             _logBox = new TextBox
             {
                 Multiline = true,
@@ -267,6 +267,7 @@ namespace Jaminator.UI
             {
                 _split.SplitterDistance = (int)(_split.Height * 0.62);
                 LayoutHeaderButtons();
+                LayoutViewLogsButton();
             };
 
             // ---------- Offline overlay ----------
@@ -307,6 +308,11 @@ namespace Jaminator.UI
             // Add LAST so it sits on top of everything else
             Controls.Add(_offlineOverlay);
             _offlineOverlay.BringToFront();
+        }
+
+        internal void LayoutViewLogsButton()
+        {
+            _viewLogsButton.Location = new Point(_logLabel.Width - _viewLogsButton.Width - 8, 3);
         }
 
         internal void LayoutHeaderButtons()
