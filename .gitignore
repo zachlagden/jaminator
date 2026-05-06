@@ -17,6 +17,7 @@ packages/
 # Publish output
 publish/
 out/
+build/
 
 # OS
 Thumbs.db
