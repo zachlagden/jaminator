@@ -1,0 +1,121 @@
+{
+  "schemaVersion": 1,
+  "manifestVersion": "2026.05.06.1",
+  "minimumToolVersion": "0.1.0",
+
+  "wallpaper": {
+    "url": "https://raw.githubusercontent.com/zachlagden/jaminator/main/assets/wallpaper.png",
+    "sha256": "PLACEHOLDER_SET_AFTER_WALLPAPER_COMMITTED",
+    "enforce": true
+  },
+
+  "folders": [
+    { "path": "Documents/Jam Coding", "createIfMissing": true }
+  ],
+
+  "programs": [
+    {
+      "id": "scratch-desktop",
+      "name": "Scratch Desktop",
+      "x64": {
+        "url": "PLACEHOLDER",
+        "sha256": "PLACEHOLDER",
+        "args": "/quiet /norestart"
+      },
+      "x86": {
+        "url": "PLACEHOLDER",
+        "sha256": "PLACEHOLDER",
+        "args": "/quiet /norestart"
+      },
+      "detect": {
+        "registryKey": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Scratch Desktop"
+      }
+    },
+    {
+      "id": "construct2",
+      "name": "Construct 2",
+      "x86": {
+        "url": "PLACEHOLDER",
+        "sha256": "PLACEHOLDER",
+        "args": "/S"
+      },
+      "detect": {
+        "registryKey": "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Construct 2"
+      }
+    },
+    {
+      "id": "kodu",
+      "name": "Kodu Game Lab",
+      "x86": {
+        "url": "PLACEHOLDER",
+        "sha256": "PLACEHOLDER",
+        "args": "/quiet /norestart"
+      },
+      "detect": {
+        "registryKey": "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Kodu Game Lab"
+      }
+    },
+    {
+      "id": "pivot-animator",
+      "name": "Pivot Animator",
+      "x86": {
+        "url": "PLACEHOLDER",
+        "sha256": "PLACEHOLDER",
+        "args": "/S"
+      },
+      "detect": {
+        "registryKey": "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Pivot Animator"
+      }
+    },
+    {
+      "id": "minecraft-education",
+      "name": "Minecraft Education",
+      "x64": {
+        "url": "PLACEHOLDER",
+        "sha256": "PLACEHOLDER",
+        "args": "/quiet /norestart"
+      },
+      "detect": {
+        "appxPackageName": "Microsoft.MinecraftEducationEdition"
+      }
+    }
+  ],
+
+  "commands": [
+    {
+      "id": "disable-cortana",
+      "name": "Disable Cortana",
+      "shell": "powershell",
+      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name AllowCortana -Value 0 -Type DWord"
+    },
+    {
+      "id": "disable-consumer-features",
+      "name": "Disable Windows consumer features (suggested apps, tips)",
+      "shell": "powershell",
+      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableWindowsConsumerFeatures -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableThirdPartySuggestions -Value 1 -Type DWord"
+    }
+  ],
+
+  "cleanup": {
+    "tempPaths": [
+      "%TEMP%",
+      "%WINDIR%\\Temp",
+      "%WINDIR%\\Prefetch",
+      "%WINDIR%\\SoftwareDistribution\\Download",
+      "%LOCALAPPDATA%\\Microsoft\\Windows\\INetCache"
+    ],
+    "emptyRecycleBin": true,
+    "clearBrowserCache": {
+      "edge": true,
+      "chrome": true,
+      "firefox": true
+    },
+    "documentsAllowlist": {
+      "enabled": true,
+      "quarantineFolder": "Documents/_unsorted",
+      "allowedSubfolders": ["Jam Coding"],
+      "allowedFiles": ["desktop.ini"]
+    },
+    "resetWallpaperIfChanged": true
+  }
+}

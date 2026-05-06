@@ -1,0 +1,26 @@
+# Build output
+bin/
+obj/
+*.pdb
+*.user
+*.suo
+
+# IDE
+.vs/
+.vscode/
+.idea/
+
+# NuGet
+packages/
+*.nupkg
+
+# Publish output
+publish/
+out/
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Local manifest overrides (for testing without committing)
+*.local.json
