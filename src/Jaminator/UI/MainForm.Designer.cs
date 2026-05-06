@@ -9,9 +9,13 @@ namespace Jaminator.UI
     {
         private IContainer? components = null;
 
+        private Panel _headerBar = null!;
+        private Label _titleLabel = null!;
+        private Label _manifestVersionLabel = null!;
+        private SplitContainer _split = null!;
+        private FlowLayoutPanel _sectionFlow = null!;
         private TextBox _logBox = null!;
         private Button _runAllButton = null!;
-        private Label _headerLabel = null!;
 
         protected override void Dispose(bool disposing)
         {
@@ -22,53 +26,112 @@ namespace Jaminator.UI
         private void InitializeComponent()
         {
             components = new Container();
-            _headerLabel = new Label();
-            _logBox = new TextBox();
-            _runAllButton = new Button();
 
-            // header
-            _headerLabel.AutoSize = false;
-            _headerLabel.Dock = DockStyle.Top;
-            _headerLabel.Height = 48;
-            _headerLabel.TextAlign = ContentAlignment.MiddleLeft;
-            _headerLabel.Padding = new Padding(16, 0, 0, 0);
-            _headerLabel.Font = new Font("Segoe UI", 14F, FontStyle.Bold);
-            _headerLabel.Text = "Jaminator";
-            _headerLabel.BackColor = Color.FromArgb(32, 33, 36);
-            _headerLabel.ForeColor = Color.White;
+            _headerBar = new Panel
+            {
+                Dock = DockStyle.Top,
+                Height = 56,
+                BackColor = Color.FromArgb(28, 28, 30)
+            };
 
-            // log
-            _logBox.Multiline = true;
-            _logBox.ReadOnly = true;
-            _logBox.ScrollBars = ScrollBars.Vertical;
-            _logBox.Font = new Font("Consolas", 9F);
-            _logBox.Dock = DockStyle.Fill;
-            _logBox.BackColor = Color.FromArgb(20, 20, 20);
-            _logBox.ForeColor = Color.FromArgb(220, 220, 220);
-            _logBox.BorderStyle = BorderStyle.None;
+            _titleLabel = new Label
+            {
+                Text = "Jaminator " + Program.ToolVersion,
+                Font = new Font("Segoe UI", 14F, FontStyle.Bold),
+                ForeColor = Color.White,
+                BackColor = Color.Transparent,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleLeft,
+                Location = new Point(16, 0),
+                Size = new Size(300, 56)
+            };
 
-            // run all
-            _runAllButton.Text = "Run All";
-            _runAllButton.Dock = DockStyle.Bottom;
-            _runAllButton.Height = 48;
-            _runAllButton.Font = new Font("Segoe UI", 11F, FontStyle.Bold);
-            _runAllButton.BackColor = Color.FromArgb(0, 120, 215);
-            _runAllButton.ForeColor = Color.White;
-            _runAllButton.FlatStyle = FlatStyle.Flat;
+            _manifestVersionLabel = new Label
+            {
+                Text = "Manifest: loading…",
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.FromArgb(180, 180, 180),
+                BackColor = Color.Transparent,
+                AutoSize = false,
+                TextAlign = ContentAlignment.MiddleRight,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Size = new Size(300, 56),
+                Location = new Point(0, 0)
+            };
+
+            _headerBar.Controls.Add(_titleLabel);
+            _headerBar.Controls.Add(_manifestVersionLabel);
+            _headerBar.Resize += (_, _) =>
+            {
+                _manifestVersionLabel.Location = new Point(_headerBar.Width - _manifestVersionLabel.Width - 16, 0);
+            };
+
+            _sectionFlow = new FlowLayoutPanel
+            {
+                Dock = DockStyle.Fill,
+                FlowDirection = FlowDirection.TopDown,
+                WrapContents = false,
+                AutoScroll = true,
+                BackColor = Color.FromArgb(20, 20, 20),
+                Padding = new Padding(8)
+            };
+            // Make children fill width
+            _sectionFlow.Resize += (_, _) =>
+            {
+                foreach (Control c in _sectionFlow.Controls)
+                    c.Width = _sectionFlow.ClientSize.Width - c.Margin.Horizontal - 16;
+            };
+            _sectionFlow.ControlAdded += (_, e) =>
+            {
+                e.Control.Width = _sectionFlow.ClientSize.Width - e.Control.Margin.Horizontal - 16;
+            };
+
+            _logBox = new TextBox
+            {
+                Multiline = true,
+                ReadOnly = true,
+                ScrollBars = ScrollBars.Vertical,
+                Font = new Font("Consolas", 9F),
+                Dock = DockStyle.Fill,
+                BackColor = Color.FromArgb(15, 15, 15),
+                ForeColor = Color.FromArgb(220, 220, 220),
+                BorderStyle = BorderStyle.None
+            };
+
+            _split = new SplitContainer
+            {
+                Dock = DockStyle.Fill,
+                Orientation = Orientation.Horizontal,
+                BackColor = Color.FromArgb(28, 28, 30),
+                SplitterWidth = 4,
+                FixedPanel = FixedPanel.None
+            };
+            _split.Panel1.Controls.Add(_sectionFlow);
+            _split.Panel2.Controls.Add(_logBox);
+
+            _runAllButton = new Button
+            {
+                Text = "Run All Selected",
+                Dock = DockStyle.Bottom,
+                Height = 52,
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
+                BackColor = Color.FromArgb(0, 120, 215),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Enabled = false
+            };
             _runAllButton.FlatAppearance.BorderSize = 0;
-            _runAllButton.Enabled = false;
-            _runAllButton.Click += OnRunAllClick;
 
-            // form
             AutoScaleMode = AutoScaleMode.Font;
-            ClientSize = new Size(900, 600);
-            Controls.Add(_logBox);
+            ClientSize = new Size(960, 680);
+            Controls.Add(_split);
             Controls.Add(_runAllButton);
-            Controls.Add(_headerLabel);
+            Controls.Add(_headerBar);
             Font = new Font("Segoe UI", 9F);
-            MinimumSize = new Size(700, 450);
+            MinimumSize = new Size(720, 480);
             Text = "Jaminator";
             StartPosition = FormStartPosition.CenterScreen;
+            Shown += (_, _) => _split.SplitterDistance = (int)(_split.Height * 0.55);
         }
     }
 }

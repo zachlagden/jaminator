@@ -5,7 +5,7 @@
 
   "wallpaper": {
     "url": "https://raw.githubusercontent.com/zachlagden/jaminator/main/assets/wallpaper.png",
-    "sha256": "PLACEHOLDER_SET_AFTER_WALLPAPER_COMMITTED",
+    "sha256": "7c149fd939c9d35b5407fa84cd05719fe7b0b2b713fb7e181eedd23a79803c82",
     "enforce": true
   },
 

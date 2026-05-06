@@ -1,6 +1,5 @@
 using System;
 using System.Drawing;
-using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Jaminator.Models;
@@ -10,59 +9,155 @@ namespace Jaminator.UI
 {
     internal sealed partial class MainForm : Form
     {
+        private readonly Logger _log;
         private readonly ManifestFetcher _fetcher = new ManifestFetcher();
+        private readonly Downloader _downloader;
+        private readonly FolderManager _folders;
+        private readonly WallpaperSetter _wallpaper;
+        private readonly CleanupRunner _cleanup;
+        private readonly CommandRunner _commands;
+        private readonly MsiInstaller _msi;
+        private readonly SelfUpdater _updater;
+
         private Manifest? _manifest;
 
         public MainForm()
         {
             InitializeComponent();
+
+            _log = new Logger();
+            _log.OnMessage += UiAppendLog;
+
+            _downloader = new Downloader(_log);
+            _folders = new FolderManager(_log);
+            _wallpaper = new WallpaperSetter(_log, _downloader);
+            _cleanup = new CleanupRunner(_log, _wallpaper);
+            _commands = new CommandRunner(_log);
+            _msi = new MsiInstaller(_log, _downloader);
+            _updater = new SelfUpdater(_log);
+
             Load += OnLoad;
+            _runAllButton.Click += async (_, _) => await RunAllAsync();
         }
 
         private async void OnLoad(object? sender, EventArgs e)
         {
-            Log($"Jaminator v{Program.ToolVersion}");
-            Log($"Architecture: {(Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit")} Windows");
-            Log($"Fetching manifest: {Program.ManifestUrl}");
+            _log.Info($"Jaminator v{Program.ToolVersion}");
+            _log.Info($"Architecture: {(Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit")} Windows");
+
+            // Self-update check (non-blocking; just logs / prompts)
+            _ = Task.Run(async () =>
+            {
+                var info = await _updater.CheckAsync(Program.ToolVersion);
+                if (info != null) PromptUpdate(info);
+            });
+
+            _log.Info($"Fetching manifest: {Program.ManifestUrl}");
             try
             {
                 _manifest = await _fetcher.FetchAsync(Program.ManifestUrl);
-                Log($"Manifest version: {_manifest.ManifestVersion}");
-                RenderManifestSummary(_manifest);
+                _log.Info($"Manifest version: {_manifest.ManifestVersion}");
+                _manifestVersionLabel.Text = $"Manifest: {_manifest.ManifestVersion}";
+                BuildSections(_manifest);
                 _runAllButton.Enabled = true;
             }
             catch (Exception ex)
             {
-                Log("ERROR fetching manifest: " + ex.Message);
+                _log.Error("Failed to fetch manifest", ex);
             }
         }
 
-        private void RenderManifestSummary(Manifest m)
+        private void PromptUpdate(UpdateInfo info)
         {
-            var sb = new StringBuilder();
-            sb.AppendLine();
-            sb.AppendLine($"Wallpaper: {(m.Wallpaper == null ? "(none)" : m.Wallpaper.Url)}");
-            sb.AppendLine($"Folders to ensure: {m.Folders.Count}");
-            foreach (var f in m.Folders) sb.AppendLine($"  - {f.Path}");
-            sb.AppendLine($"Programs: {m.Programs.Count}");
-            foreach (var p in m.Programs) sb.AppendLine($"  - {p.Name} ({p.Id})");
-            sb.AppendLine($"Commands: {m.Commands.Count}");
-            foreach (var c in m.Commands) sb.AppendLine($"  - {c.Name}");
-            sb.AppendLine($"Cleanup configured: {(m.Cleanup != null ? "yes" : "no")}");
-            Log(sb.ToString());
+            if (InvokeRequired) { BeginInvoke(new Action<UpdateInfo>(PromptUpdate), info); return; }
+            var ans = MessageBox.Show(
+                $"A newer Jaminator is available: {info.Version}\n\n" +
+                "Download and apply now? The app will restart automatically.",
+                "Update available",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Information);
+            if (ans != DialogResult.Yes) return;
+
+            _ = Task.Run(async () =>
+            {
+                if (await _updater.ApplyAsync(info))
+                {
+                    BeginInvoke(new Action(() => { _log.Info("Update applied — exiting for restart"); Application.Exit(); }));
+                }
+            });
         }
 
-        private void OnRunAllClick(object? sender, EventArgs e)
+        private void BuildSections(Manifest m)
         {
-            Log("");
-            Log("[Run All] not yet implemented — services are stubbed in this scaffold.");
-            Log("Coming next: cleanup runner, MSI installer, folder sync, wallpaper enforcement, command runner.");
+            _sectionFlow.Controls.Clear();
+
+            if (m.Cleanup != null)
+            {
+                AddSection("cleanup", "Cleanup",
+                    $"{m.Cleanup.TempPaths.Count} temp paths, recycle bin, browser cache, allowlist",
+                    () => _cleanup.RunAsync(m.Cleanup, m.Wallpaper));
+            }
+
+            if (m.Wallpaper != null)
+            {
+                AddSection("wallpaper", "Wallpaper",
+                    System.IO.Path.GetFileName(m.Wallpaper.Url),
+                    () => _wallpaper.EnsureAsync(m.Wallpaper, forceReset: false));
+            }
+
+            if (m.Folders.Count > 0)
+            {
+                AddSection("folders", "Folders",
+                    $"{m.Folders.Count} folder(s) under user profile",
+                    () => Task.Run(() => _folders.EnsureFolders(m.Folders)));
+            }
+
+            if (m.Programs.Count > 0)
+            {
+                AddSection("programs", "Programs",
+                    $"{m.Programs.Count} MSI(s) — installs missing/outdated",
+                    () => _msi.InstallAllAsync(m.Programs));
+            }
+
+            if (m.Commands.Count > 0)
+            {
+                AddSection("commands", "Commands",
+                    $"{m.Commands.Count} admin command(s)",
+                    () => _commands.RunAsync(m.Commands));
+            }
         }
 
-        private void Log(string message)
+        private SectionPanel AddSection(string id, string title, string subtitle, Func<Task>? handler)
         {
-            if (InvokeRequired) { BeginInvoke(new Action<string>(Log), message); return; }
-            _logBox.AppendText(message + Environment.NewLine);
+            var s = new SectionPanel(id, title);
+            s.SetSubtitle(subtitle);
+            s.RunHandler = handler;
+            _sectionFlow.Controls.Add(s);
+            return s;
+        }
+
+        private async Task RunAllAsync()
+        {
+            _runAllButton.Enabled = false;
+            _log.Info("");
+            _log.Info("=== Run All started ===");
+
+            foreach (var ctrl in _sectionFlow.Controls)
+            {
+                if (ctrl is SectionPanel s && s.SelectCheckBox.Checked && s.RunButton.Enabled)
+                {
+                    try { await s.RunOnceAsync(); }
+                    catch (Exception ex) { _log.Error("Section failed", ex); }
+                }
+            }
+
+            _log.Info("=== Run All complete ===");
+            _runAllButton.Enabled = true;
+        }
+
+        private void UiAppendLog(string line)
+        {
+            if (InvokeRequired) { BeginInvoke(new Action<string>(UiAppendLog), line); return; }
+            _logBox.AppendText(line + Environment.NewLine);
         }
     }
 }
