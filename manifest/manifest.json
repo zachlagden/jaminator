@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "manifestVersion": "2026.05.06.6",
+  "manifestVersion": "2026.05.06.7",
   "minimumToolVersion": "0.3.0",
 
   "wallpaper": {
@@ -95,7 +95,7 @@
         "args": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
       },
       "detect": {
-        "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Construct 2_is1"
+        "registryKey": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Construct 2_is1"
       }
     },
 
