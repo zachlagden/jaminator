@@ -79,6 +79,8 @@ namespace Jaminator.UI
         {
             _installButton.Visible = !Installer.IsInstalled;
             _uninstallButton.Visible = Installer.IsInstalled;
+            // Reflow now that the active button changed width
+            LayoutHeaderButtons();
         }
 
         private void SetOfflineOverlay(bool show)

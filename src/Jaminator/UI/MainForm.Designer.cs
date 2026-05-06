@@ -107,12 +107,12 @@ namespace Jaminator.UI
 
             _checkUpdatesButton = new Button
             {
-                Text = "Check for updates",
-                Width = 140, Height = 32,
+                Text = "Update",
+                Width = 90, Height = 32,
                 BackColor = Color.FromArgb(60, 60, 65),
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9F),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 Cursor = Cursors.Hand
             };
@@ -123,20 +123,10 @@ namespace Jaminator.UI
             _headerBar.Controls.Add(_installButton);
             _headerBar.Controls.Add(_uninstallButton);
             _headerBar.Controls.Add(_checkUpdatesButton);
-            _headerBar.Resize += (_, _) =>
-            {
-                Button? activeBtn = _installButton.Visible ? _installButton :
-                                   _uninstallButton.Visible ? _uninstallButton : null;
-                int rightEdge = _headerBar.Width - 16;
-                if (activeBtn != null)
-                {
-                    activeBtn.Location = new Point(rightEdge - activeBtn.Width, 12);
-                    rightEdge = activeBtn.Left - 8;
-                }
-                _checkUpdatesButton.Location = new Point(rightEdge - _checkUpdatesButton.Width, 12);
-                rightEdge = _checkUpdatesButton.Left - 12;
-                _manifestVersionLabel.Location = new Point(rightEdge - _manifestVersionLabel.Width, 0);
-            };
+            // SizeChanged fires on first layout AND every resize — ensures the
+            // buttons are positioned correctly the first time the form paints,
+            // not only after a manual resize.
+            _headerBar.SizeChanged += (_, _) => LayoutHeaderButtons();
 
             // ---------- Sections (top half of split) ----------
             _autoHeader = MakeGroupHeader("Automatic on logon", Color.FromArgb(76, 175, 80));
@@ -248,6 +238,7 @@ namespace Jaminator.UI
             Shown += (_, _) =>
             {
                 _split.SplitterDistance = (int)(_split.Height * 0.62);
+                LayoutHeaderButtons();
             };
 
             // ---------- Offline overlay ----------
@@ -288,6 +279,22 @@ namespace Jaminator.UI
             // Add LAST so it sits on top of everything else
             Controls.Add(_offlineOverlay);
             _offlineOverlay.BringToFront();
+        }
+
+        internal void LayoutHeaderButtons()
+        {
+            // Right-aligned: [version label] [Update] [Install/Uninstall]
+            Button? activeBtn = _installButton.Visible ? _installButton :
+                               _uninstallButton.Visible ? _uninstallButton : null;
+            int rightEdge = _headerBar.Width - 16;
+            if (activeBtn != null)
+            {
+                activeBtn.Location = new Point(rightEdge - activeBtn.Width, 12);
+                rightEdge = activeBtn.Left - 8;
+            }
+            _checkUpdatesButton.Location = new Point(rightEdge - _checkUpdatesButton.Width, 12);
+            rightEdge = _checkUpdatesButton.Left - 12;
+            _manifestVersionLabel.Location = new Point(rightEdge - _manifestVersionLabel.Width, 0);
         }
 
         private static Label MakeGroupHeader(string text, Color accent)
