@@ -4,10 +4,23 @@ Fleet maintenance tool for Jam Coding classroom laptops. One self-elevating EXE 
 
 ## How it works
 
-1. Tech double-clicks `Jaminator.exe` on a laptop. UAC prompts.
-2. Tool fetches `manifest/manifest.json` from this repo's `main` branch.
-3. UI shows what the manifest says should happen on this machine. Tech ticks what they want and clicks **Run**.
-4. Each action is logged to screen and to `C:\ProgramData\Jaminator\logs\`.
+1. Tech runs `Jaminator.exe --install` once per laptop. UAC prompts. Jaminator copies itself to `C:\Program Files\Jaminator\` and registers a scheduled task that auto-runs at every user logon.
+2. **At logon (auto, headless)** Jaminator runs only the *login-safe* sections:
+   - `folders` — ensure school folders exist under `Documents/`
+   - `wallpaper` — refresh canonical wallpaper, revert any kid-change
+3. **On demand (UI, by tech)** the tech opens Jaminator from the Start Menu to run anything *disruptive* — cleanup, app installs, registry tweaks. None of these run at logon, so a class in progress is never interrupted.
+4. The whole control plane lives in `manifest/manifest.json` in this repo. Edit + commit and every laptop picks up the change next launch.
+5. Every action is logged to screen and to `C:\ProgramData\Jaminator\logs\`.
+
+## CLI modes
+
+| Flag | Behaviour |
+|---|---|
+| *(none)* | Open the full UI. Tech ticks sections + clicks Run. |
+| `--login-mode` | Headless. Run only login-safe sections (folders + wallpaper). Used by the scheduled task. |
+| `--run-all` | Headless. Run every section non-interactively. Useful for scripted/Tailscale-driven setup. |
+| `--install` | Self-install to `%ProgramFiles%\Jaminator\`, register scheduled task, create Start Menu shortcut, exit. |
+| `--uninstall` | Reverse of `--install`. |
 
 ## Repo layout
 

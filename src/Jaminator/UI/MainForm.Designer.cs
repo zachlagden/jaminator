@@ -12,6 +12,7 @@ namespace Jaminator.UI
         private Panel _headerBar = null!;
         private Label _titleLabel = null!;
         private Label _manifestVersionLabel = null!;
+        private Button _installButton = null!;
         private SplitContainer _split = null!;
         private FlowLayoutPanel _sectionFlow = null!;
         private TextBox _logBox = null!;
@@ -59,11 +60,28 @@ namespace Jaminator.UI
                 Location = new Point(0, 0)
             };
 
+            _installButton = new Button
+            {
+                Text = "Install to system",
+                Width = 140,
+                Height = 32,
+                BackColor = Color.FromArgb(60, 60, 65),
+                ForeColor = Color.White,
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Visible = false,
+                Anchor = AnchorStyles.Top | AnchorStyles.Right
+            };
+            _installButton.FlatAppearance.BorderSize = 0;
+
             _headerBar.Controls.Add(_titleLabel);
             _headerBar.Controls.Add(_manifestVersionLabel);
+            _headerBar.Controls.Add(_installButton);
             _headerBar.Resize += (_, _) =>
             {
-                _manifestVersionLabel.Location = new Point(_headerBar.Width - _manifestVersionLabel.Width - 16, 0);
+                _installButton.Location = new Point(_headerBar.Width - _installButton.Width - 16, 12);
+                var vrEnd = _installButton.Visible ? _installButton.Left : _headerBar.Width - 16;
+                _manifestVersionLabel.Location = new Point(vrEnd - _manifestVersionLabel.Width - 12, 0);
             };
 
             _sectionFlow = new FlowLayoutPanel
