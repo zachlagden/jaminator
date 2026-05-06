@@ -4,6 +4,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Jaminator", "src\Jaminator\
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Bootstrap", "bootstrap\Bootstrap.csproj", "{C7E2A3D4-2345-5432-BCDE-2345678901BC}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "UpdateCheck", "installer\UpdateCheck\UpdateCheck.csproj", "{D8F3B4E5-3456-6543-CDEF-3456789012CD}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -18,6 +20,10 @@ Global
 		{C7E2A3D4-2345-5432-BCDE-2345678901BC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{C7E2A3D4-2345-5432-BCDE-2345678901BC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{C7E2A3D4-2345-5432-BCDE-2345678901BC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{D8F3B4E5-3456-6543-CDEF-3456789012CD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{D8F3B4E5-3456-6543-CDEF-3456789012CD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{D8F3B4E5-3456-6543-CDEF-3456789012CD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{D8F3B4E5-3456-6543-CDEF-3456789012CD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

@@ -62,6 +62,19 @@
                   DllEntry="WixShellExec"
                   Impersonate="yes"
                   BinaryRef="Wix4UtilCA_X86" />
+
+    <!-- "Newer-version-available" check. Probes GitHub for the latest release;
+         if newer than this MSI, downloads it, spawns a fresh msiexec, and
+         aborts this install. Runs only in interactive UI mode — silent
+         installs trust the version they specified. Fails open on offline. -->
+    <Binary Id="UpdateCheckCA" SourceFile="$(var.UpdateCheckCaDll)" />
+    <CustomAction Id="CheckForNewerVersion"
+                  BinaryRef="UpdateCheckCA"
+                  DllEntry="CheckForNewerVersion"
+                  Execute="immediate"
+                  Impersonate="yes"
+                  Return="check" />
+
     <UI>
       <Publish Dialog="ExitDialog"
                Control="Finish"
@@ -69,6 +82,12 @@
                Value="LaunchApplication"
                Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed" />
     </UI>
+
+    <InstallUISequence>
+      <Custom Action="CheckForNewerVersion"
+              After="LaunchConditions"
+              Condition="NOT Installed AND NOT REMOVE" />
+    </InstallUISequence>
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLDIR" Name="Jaminator" />
