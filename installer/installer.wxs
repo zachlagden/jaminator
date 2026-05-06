@@ -24,7 +24,7 @@
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
     <!-- Add/Remove Programs metadata -->
-    <Icon Id="JaminatorIcon" SourceFile="$(var.SourceDir)\Jaminator.exe" />
+    <Icon Id="JaminatorIcon" SourceFile="..\src\Jaminator\Jaminator.ico" />
     <Property Id="ARPPRODUCTICON" Value="JaminatorIcon" />
     <Property Id="ARPHELPLINK" Value="https://github.com/zachlagden/jaminator" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/zachlagden/jaminator" />

@@ -28,6 +28,7 @@ namespace Jaminator.UI
 
         private TextBox _logBox = null!;
         private Label _logLabel = null!;
+        private Button _viewLogsButton = null!;
         private Button _runAllButton = null!;
 
         private Panel _offlineOverlay = null!;
@@ -184,6 +185,23 @@ namespace Jaminator.UI
                 ForeColor = Color.FromArgb(200, 200, 200),
                 BackColor = Color.FromArgb(28, 28, 30)
             };
+            _viewLogsButton = new Button
+            {
+                Text = "Open logs folder",
+                Width = 130, Height = 22,
+                BackColor = Color.FromArgb(50, 50, 55),
+                ForeColor = Color.FromArgb(220, 220, 220),
+                FlatStyle = FlatStyle.Flat,
+                Font = new Font("Segoe UI", 8F),
+                Anchor = AnchorStyles.Top | AnchorStyles.Right,
+                Cursor = Cursors.Hand
+            };
+            _viewLogsButton.FlatAppearance.BorderSize = 0;
+            _logLabel.Controls.Add(_viewLogsButton);
+            _logLabel.Resize += (_, _) =>
+            {
+                _viewLogsButton.Location = new Point(_logLabel.Width - _viewLogsButton.Width - 8, 3);
+            };
             _logBox = new TextBox
             {
                 Multiline = true,
@@ -232,6 +250,16 @@ namespace Jaminator.UI
             Font = new Font("Segoe UI", 9F);
             MinimumSize = new Size(820, 560);
             Text = "Jaminator";
+            try
+            {
+                using var iconStream = System.Reflection.Assembly
+                    .GetExecutingAssembly()
+                    .GetManifestResourceStream("Jaminator.Jaminator.ico");
+                // Fallback to extracting from EXE icon if not embedded as a resource.
+                Icon = System.Drawing.Icon.ExtractAssociatedIcon(
+                    System.Diagnostics.Process.GetCurrentProcess().MainModule!.FileName);
+            }
+            catch { /* leave default icon if extraction fails */ }
             StartPosition = FormStartPosition.CenterScreen;
             BackColor = Color.FromArgb(20, 20, 20);
 

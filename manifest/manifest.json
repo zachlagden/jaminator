@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "manifestVersion": "2026.05.06.7",
+  "manifestVersion": "2026.05.06.8",
   "minimumToolVersion": "0.3.0",
 
   "wallpaper": {
@@ -119,25 +119,29 @@
       "id": "disable-cortana",
       "name": "Disable Cortana",
       "shell": "powershell",
-      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name AllowCortana -Value 0 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name DisableWebSearch -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name ConnectedSearchUseWeb -Value 0 -Type DWord"
+      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name AllowCortana -Value 0 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name DisableWebSearch -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name ConnectedSearchUseWeb -Value 0 -Type DWord",
+      "skipIf": "(Get-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -EA 0).AllowCortana -eq 0 -and (Get-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -EA 0).DisableWebSearch -eq 1"
     },
     {
       "id": "disable-consumer-features",
       "name": "Disable Windows consumer features (suggested apps, tips)",
       "shell": "powershell",
-      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableWindowsConsumerFeatures -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableThirdPartySuggestions -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableSoftLanding -Value 1 -Type DWord"
+      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableWindowsConsumerFeatures -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableThirdPartySuggestions -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableSoftLanding -Value 1 -Type DWord",
+      "skipIf": "(Get-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -EA 0).DisableWindowsConsumerFeatures -eq 1 -and (Get-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -EA 0).DisableThirdPartySuggestions -eq 1"
     },
     {
       "id": "disable-onedrive",
       "name": "Uninstall OneDrive",
       "shell": "powershell",
-      "script": "Get-Process OneDrive -EA 0 | Stop-Process -Force -EA 0; $od = if (Test-Path \"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\") { \"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\" } else { \"$env:SystemRoot\\System32\\OneDriveSetup.exe\" }; if (Test-Path $od) { Start-Process $od '/uninstall' -Wait -NoNewWindow }; New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive' -Name DisableFileSyncNGSC -Value 1 -Type DWord"
+      "script": "Get-Process OneDrive -EA 0 | Stop-Process -Force -EA 0; $od = if (Test-Path \"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\") { \"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\" } else { \"$env:SystemRoot\\System32\\OneDriveSetup.exe\" }; if (Test-Path $od) { Start-Process $od '/uninstall' -Wait -NoNewWindow }; New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive' -Name DisableFileSyncNGSC -Value 1 -Type DWord",
+      "skipIf": "-not (Test-Path \"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\") -and -not (Test-Path \"$env:SystemRoot\\System32\\OneDriveSetup.exe\") -and (Get-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive' -EA 0).DisableFileSyncNGSC -eq 1"
     },
     {
       "id": "remove-bloatware-appx",
       "name": "Remove Microsoft bloatware Appx packages",
       "shell": "powershell",
-      "script": "$bloat=@('Microsoft.BingWeather','Microsoft.BingNews','Microsoft.BingSearch','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.MicrosoftSolitaireCollection','Microsoft.People','Microsoft.SkypeApp','Microsoft.WindowsFeedbackHub','Microsoft.WindowsMaps','Microsoft.YourPhone','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.MicrosoftOfficeHub','Microsoft.Microsoft3DViewer','Microsoft.MixedReality.Portal'); foreach($n in $bloat){ Get-AppxPackage -AllUsers $n -EA 0 | Remove-AppxPackage -AllUsers -EA 0; Get-AppxProvisionedPackage -Online -EA 0 | Where-Object { $_.DisplayName -eq $n } | Remove-AppxProvisionedPackage -Online -EA 0 | Out-Null }"
+      "script": "$bloat=@('Microsoft.BingWeather','Microsoft.BingNews','Microsoft.BingSearch','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.MicrosoftSolitaireCollection','Microsoft.People','Microsoft.SkypeApp','Microsoft.WindowsFeedbackHub','Microsoft.WindowsMaps','Microsoft.YourPhone','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.MicrosoftOfficeHub','Microsoft.Microsoft3DViewer','Microsoft.MixedReality.Portal'); foreach($n in $bloat){ Get-AppxPackage -AllUsers $n -EA 0 | Remove-AppxPackage -AllUsers -EA 0; Get-AppxProvisionedPackage -Online -EA 0 | Where-Object { $_.DisplayName -eq $n } | Remove-AppxProvisionedPackage -Online -EA 0 | Out-Null }",
+      "skipIf": "$bloat=@('Microsoft.BingWeather','Microsoft.BingNews','Microsoft.BingSearch','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.MicrosoftSolitaireCollection','Microsoft.People','Microsoft.SkypeApp','Microsoft.WindowsFeedbackHub','Microsoft.WindowsMaps','Microsoft.YourPhone','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.MicrosoftOfficeHub','Microsoft.Microsoft3DViewer','Microsoft.MixedReality.Portal'); -not ($bloat | Where-Object { Get-AppxPackage -AllUsers $_ -EA 0 })"
     }
   ],
 

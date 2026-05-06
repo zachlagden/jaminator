@@ -4,6 +4,7 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
     <ApplicationManifest>App.manifest</ApplicationManifest>
+    <ApplicationIcon>Jaminator.ico</ApplicationIcon>
     <AssemblyName>Jaminator</AssemblyName>
     <RootNamespace>Jaminator</RootNamespace>
     <Version>0.1.0</Version>

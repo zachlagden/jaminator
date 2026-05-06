@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Jaminator.Models;
@@ -43,6 +44,7 @@ namespace Jaminator.UI
         private readonly InternetGate _gate;
 
         private Manifest? _manifest;
+        private bool _anySectionFailed;
 
         public MainForm()
         {
@@ -69,10 +71,90 @@ namespace Jaminator.UI
             UpdateHeaderButtonsVisibility();
 
             Load += OnLoad;
-            _runAllButton.Click += async (_, _) => await RunAllAsync();
+            _runAllButton.Click += async (_, _) => await RunAllOnClickAsync();
             _installButton.Click += OnInstallClick;
             _uninstallButton.Click += OnUninstallClick;
             _checkUpdatesButton.Click += async (_, _) => await OnCheckUpdatesClickAsync();
+            _viewLogsButton.Click += (_, _) => OpenLogsFolder();
+        }
+
+        private void ShowFirstRunWelcomeIfNeeded()
+        {
+            if (Program.Mode != Program.RunMode.Ui) return; // never in headless modes
+            var state = State.Load();
+            if (state.WelcomeSeen) return;
+
+            MessageBox.Show(
+                "Welcome to Jaminator.\n\n" +
+                "Two groups of actions:\n\n" +
+                "  • Automatic on logon — Wallpaper and Folders. These run silently every " +
+                "time someone logs in via the scheduled task. You don't need to click " +
+                "anything for them.\n\n" +
+                "  • Manual — Cleanup, Programs, Commands. These can disrupt a lesson " +
+                "(deleting files, installing software, changing system settings) so they " +
+                "only run when you tick the box and click Run.\n\n" +
+                "Logs land in C:\\ProgramData\\Jaminator\\logs\\ — there's an Open logs " +
+                "folder button in the Log panel.\n\n" +
+                "The full configuration (which apps, which folders, which schedule) lives " +
+                "in manifest.json on the Jaminator GitHub repo. Edit it there and every " +
+                "laptop picks it up next launch.",
+                "Welcome to Jaminator",
+                MessageBoxButtons.OK, MessageBoxIcon.Information);
+
+            state.WelcomeSeen = true;
+            State.Save(state);
+        }
+
+        private void ShowLastLoginRunIndicator()
+        {
+            var state = State.Load();
+            if (state.LastLoginRunUtc == null) return;
+            var ago = DateTime.UtcNow - state.LastLoginRunUtc.Value;
+            string when;
+            if (ago.TotalMinutes < 1) when = "just now";
+            else if (ago.TotalMinutes < 60) when = $"{(int)ago.TotalMinutes}m ago";
+            else if (ago.TotalHours < 24) when = $"{(int)ago.TotalHours}h ago";
+            else when = $"{(int)ago.TotalDays}d ago";
+
+            var symbol = state.LastLoginRunOk == true ? "✓" : "!";
+            _log.Info($"Last logon auto-run: {when} ({symbol})");
+        }
+
+        private void OpenLogsFolder()
+        {
+            var dir = Path.Combine(
+                Environment.GetFolderPath(Environment.SpecialFolder.CommonApplicationData),
+                "Jaminator", "logs");
+            try
+            {
+                if (!Directory.Exists(dir)) Directory.CreateDirectory(dir);
+                System.Diagnostics.Process.Start("explorer.exe", dir);
+            }
+            catch (Exception ex) { _log.Warn("Could not open logs folder: " + ex.Message); }
+        }
+
+        private async Task RunAllOnClickAsync()
+        {
+            // Confirm before doing anything destructive. Skip the prompt for sections
+            // that are idempotent (Wallpaper, Folders) — we only call out the rest.
+            var disruptive = new System.Collections.Generic.List<string>();
+            foreach (var flow in new[] { _autoFlow, _manualFlow })
+                foreach (Control ctrl in flow.Controls)
+                    if (ctrl is SectionPanel s && s.SelectCheckBox.Checked && s.RunButton.Enabled
+                        && !LoginSafeSections.Contains(s.SectionId))
+                        disruptive.Add(s.TitleLabel.Text);
+
+            if (disruptive.Count > 0)
+            {
+                var ans = MessageBox.Show(
+                    "About to run:\n\n  • " + string.Join("\n  • ", disruptive) + "\n\n" +
+                    "These can delete files, install software, and change system settings. Continue?",
+                    "Confirm Run All",
+                    MessageBoxButtons.YesNo, MessageBoxIcon.Warning, MessageBoxDefaultButton.Button2);
+                if (ans != DialogResult.Yes) return;
+            }
+
+            await RunAllAsync();
         }
 
         private void UpdateHeaderButtonsVisibility()
@@ -98,6 +180,9 @@ namespace Jaminator.UI
         {
             _log.Info($"Jaminator v{Program.ToolVersion} ({Program.Mode})");
             _log.Info($"Architecture: {(Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit")} Windows");
+
+            ShowFirstRunWelcomeIfNeeded();
+            ShowLastLoginRunIndicator();
 
             // Block until we can actually reach GitHub. Without internet, every
             // section is broken (manifest fetch fails, downloads fail) — better
@@ -148,6 +233,7 @@ namespace Jaminator.UI
                     else
                         _log.Info("CLI flag --run-all: executing all sections automatically");
 
+                    var sectionsBefore = CountSelectedSections();
                     await RunAllAsync();
 
                     // Login-mode also reconciles the daily auto-run task per the manifest's
@@ -157,6 +243,20 @@ namespace Jaminator.UI
                     {
                         Installer.ReconcileDailyTask(_manifest.Schedule.DailyRunAll, _log);
                     }
+
+                    // Record what just happened so the next interactive launch can
+                    // show "last logon run: 12m ago".
+                    var state = State.Load();
+                    if (Program.LoginModeOnly)
+                    {
+                        state.LastLoginRunUtc = DateTime.UtcNow;
+                        state.LastLoginRunOk = !_anySectionFailed;
+                    }
+                    else
+                    {
+                        state.LastFullRunUtc = DateTime.UtcNow;
+                    }
+                    State.Save(state);
 
                     if (Program.ExitAfterRun)
                     {
@@ -367,6 +467,7 @@ namespace Jaminator.UI
         private async Task RunAllAsync()
         {
             _runAllButton.Enabled = false;
+            _anySectionFailed = false;
             _log.Info("");
             _log.Info(Program.LoginModeOnly
                 ? "=== Login auto-run started ==="
@@ -381,7 +482,7 @@ namespace Jaminator.UI
                         continue;
 
                     try { await s.RunOnceAsync(); }
-                    catch (Exception ex) { _log.Error("Section failed", ex); }
+                    catch (Exception ex) { _log.Error("Section failed", ex); _anySectionFailed = true; }
                 }
             }
 
@@ -389,6 +490,15 @@ namespace Jaminator.UI
                 ? "=== Login auto-run complete ==="
                 : "=== Run All complete ===");
             UpdateRunAllButtonText();
+        }
+
+        private int CountSelectedSections()
+        {
+            int n = 0;
+            foreach (FlowLayoutPanel flow in new[] { _autoFlow, _manualFlow })
+                foreach (Control ctrl in flow.Controls)
+                    if (ctrl is SectionPanel s && s.SelectCheckBox.Checked && s.RunButton.Enabled) n++;
+            return n;
         }
 
         private void UiAppendLog(string line)

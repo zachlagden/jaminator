@@ -20,6 +20,15 @@ namespace Jaminator.Services
         {
             _log.Info($"Command: {cmd.Name}");
 
+            if (!string.IsNullOrWhiteSpace(cmd.SkipIf))
+            {
+                if (await EvaluateSkipIfAsync(cmd.SkipIf!))
+                {
+                    _log.Info("  already in target state, skipping");
+                    return;
+                }
+            }
+
             ProcessStartInfo psi;
             switch (cmd.Shell?.ToLowerInvariant())
             {
@@ -58,5 +67,29 @@ namespace Jaminator.Services
 
         // PowerShell -Command receives a string; escape embedded double quotes.
         private static string EscapePs(string script) => script.Replace("\"", "\\\"");
+
+        /// <summary>
+        /// Runs the SkipIf expression as PowerShell. Exit 0 = condition true (skip).
+        /// Anything else (including parse errors) = run the command anyway, fail-open.
+        /// </summary>
+        private async Task<bool> EvaluateSkipIfAsync(string expression)
+        {
+            var wrapped = $"if ({expression}) {{ exit 0 }} else {{ exit 1 }}";
+            var psi = new ProcessStartInfo("powershell.exe",
+                "-NoProfile -ExecutionPolicy Bypass -Command \"" + EscapePs(wrapped) + "\"")
+            {
+                UseShellExecute = false,
+                CreateNoWindow = true,
+                RedirectStandardOutput = true,
+                RedirectStandardError = true
+            };
+            try
+            {
+                using var p = Process.Start(psi)!;
+                await Task.Run(() => p.WaitForExit(15000));
+                return p.HasExited && p.ExitCode == 0;
+            }
+            catch { return false; }
+        }
     }
 }

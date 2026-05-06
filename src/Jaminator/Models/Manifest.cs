@@ -87,6 +87,12 @@ namespace Jaminator.Models
         [JsonProperty("name")] public string Name { get; set; } = "";
         [JsonProperty("shell")] public string Shell { get; set; } = "powershell";
         [JsonProperty("script")] public string Script { get; set; } = "";
+
+        /// <summary>
+        /// PowerShell boolean expression. If it evaluates true, the command is
+        /// skipped — used to make commands idempotent (e.g. "AllowCortana already 0").
+        /// </summary>
+        [JsonProperty("skipIf")] public string? SkipIf { get; set; }
     }
 
     public sealed class CleanupEntry
