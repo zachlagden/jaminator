@@ -37,11 +37,27 @@ namespace Jaminator.Models
         [JsonProperty("detect")] public DetectEntry? Detect { get; set; }
     }
 
+    /// <summary>
+    /// Per-architecture install plan. Carries the installer itself plus any
+    /// prerequisites that must run before it (e.g. XNA before Kodu).
+    /// </summary>
     public sealed class ArchEntry
     {
+        /// <summary>"msi" (default), "exe", or "zip-extract".</summary>
+        [JsonProperty("kind")] public string Kind { get; set; } = "msi";
         [JsonProperty("url")] public string Url { get; set; } = "";
         [JsonProperty("sha256")] public string Sha256 { get; set; } = "";
         [JsonProperty("args")] public string Args { get; set; } = "";
+
+        // zip-extract fields
+        [JsonProperty("installPath")] public string? InstallPath { get; set; }
+        [JsonProperty("exeName")] public string? ExeName { get; set; }
+        [JsonProperty("desktopShortcut")] public bool DesktopShortcut { get; set; }
+        [JsonProperty("startMenuShortcut")] public bool StartMenuShortcut { get; set; }
+        [JsonProperty("shortcutName")] public string? ShortcutName { get; set; }
+
+        /// <summary>Prerequisites installed (in order) before this entry.</summary>
+        [JsonProperty("prerequisites")] public List<ArchEntry> Prerequisites { get; set; } = new();
     }
 
     public sealed class DetectEntry
@@ -49,6 +65,7 @@ namespace Jaminator.Models
         [JsonProperty("registryKey")] public string? RegistryKey { get; set; }
         [JsonProperty("minVersion")] public string? MinVersion { get; set; }
         [JsonProperty("appxPackageName")] public string? AppxPackageName { get; set; }
+        [JsonProperty("filePath")] public string? FilePath { get; set; }
     }
 
     public sealed class CommandEntry

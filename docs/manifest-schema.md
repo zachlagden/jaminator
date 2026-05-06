@@ -48,32 +48,95 @@ The manifest at `manifest/manifest.json` is the source of truth. The Jaminator E
 
 ## `programs`
 
-Each program has per-architecture MSI URLs. The tool detects 32 vs 64-bit Windows and picks the right one.
+Each program has per-architecture installer entries. The tool detects 32 vs 64-bit Windows and picks the matching one (falls back to whatever arch is provided if only one is set).
+
+### `kind`
+
+Three installer kinds are supported:
+
+- `msi` — standard Windows Installer. Runs `msiexec /i <file> <args>`.
+- `exe` — generic installer EXE (NSIS, InstallShield, custom). Runs the EXE with `<args>`.
+- `zip-extract` — portable app bundled as a zip. Extracts to `installPath`, optionally creates desktop / start-menu shortcuts pointing at `exeName`.
+
+### MSI example
+
+```json
+{
+  "id": "kodu",
+  "name": "Kodu Game Lab",
+  "x86": {
+    "kind": "msi",
+    "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/KoduSetup_1.6.18.0.msi",
+    "sha256": "...",
+    "args": "/qn /norestart ALLUSERS=1",
+    "prerequisites": [
+      {
+        "kind": "msi",
+        "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/xnafx40_redist.msi",
+        "sha256": "...",
+        "args": "/qn /norestart"
+      }
+    ]
+  },
+  "detect": {
+    "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Kodu Game Lab"
+  }
+}
+```
+
+`prerequisites` are installed in order before the main installer (e.g. XNA Framework before Kodu).
+
+### EXE example
 
 ```json
 {
   "id": "scratch-desktop",
   "name": "Scratch Desktop",
-  "x64": {
-    "url": "https://github.com/zachlagden/jaminator/releases/download/assets-v1/scratch-desktop-x64.msi",
-    "sha256": "...",
-    "args": "/quiet /norestart"
-  },
   "x86": {
-    "url": "https://github.com/zachlagden/jaminator/releases/download/assets-v1/scratch-desktop-x86.msi",
+    "kind": "exe",
+    "url": "https://...Scratch Desktop Setup 3.9.0.exe",
     "sha256": "...",
-    "args": "/quiet /norestart"
+    "args": "/S /allusers"
   },
   "detect": {
-    "registryKey": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Scratch Desktop",
-    "minVersion": "3.29.0"
+    "registryKey": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Scratch Desktop"
   }
 }
 ```
 
-If the `detect` rule matches an already-installed equal-or-newer version, the install is skipped. Either or both arch entries may be omitted (e.g. an x64-only program).
+### zip-extract example (portable app)
 
-MSIs that are too large for git are stored as GitHub Release assets, not committed to the repo.
+```json
+{
+  "id": "pivot-animator",
+  "name": "Pivot Animator v5",
+  "x86": {
+    "kind": "zip-extract",
+    "url": "https://...pivot-v5.zip",
+    "sha256": "...",
+    "installPath": "%ProgramFiles(x86)%\\Pivot Animator v5",
+    "exeName": "pivot.exe",
+    "shortcutName": "Pivot Animator v5",
+    "desktopShortcut": true,
+    "startMenuShortcut": true
+  },
+  "detect": {
+    "filePath": "%ProgramFiles(x86)%\\Pivot Animator v5\\pivot.exe"
+  }
+}
+```
+
+### Detection rules
+
+The `detect` block determines whether the install can be skipped. Any field present is checked:
+
+- `filePath` — file exists at the expanded path
+- `registryKey` — uninstall key exists; `minVersion` (optional) compared against `DisplayVersion`
+- `appxPackageName` — Appx package present (for Microsoft Store apps like Minecraft Education)
+
+If any rule matches, the program is considered installed and skipped.
+
+A 404 on the installer URL fails just that one program — other programs in the list still run.
 
 ## `commands`
 

@@ -6,7 +6,7 @@ namespace Jaminator
 {
     internal static class Program
     {
-        public const string ToolVersion = "0.2.0";
+        public const string ToolVersion = "0.3.0";
         public const string ManifestUrl =
             "https://raw.githubusercontent.com/zachlagden/jaminator/main/manifest/manifest.json";
 

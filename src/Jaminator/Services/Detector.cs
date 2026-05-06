@@ -15,6 +15,12 @@ namespace Jaminator.Services
         {
             if (d == null) return false;
 
+            if (!string.IsNullOrWhiteSpace(d.FilePath))
+            {
+                var path = Environment.ExpandEnvironmentVariables(d.FilePath!);
+                if (System.IO.File.Exists(path)) return true;
+            }
+
             if (!string.IsNullOrWhiteSpace(d.RegistryKey))
             {
                 var (hive, sub) = SplitKey(d.RegistryKey!);

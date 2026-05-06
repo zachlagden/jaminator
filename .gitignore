@@ -24,3 +24,6 @@ Thumbs.db
 
 # Local manifest overrides (for testing without committing)
 *.local.json
+
+# Installer staging — too big for git, uploaded as Release assets
+/installers-staging/

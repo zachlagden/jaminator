@@ -1,7 +1,7 @@
 {
-  "schemaVersion": 1,
-  "manifestVersion": "2026.05.06.1",
-  "minimumToolVersion": "0.1.0",
+  "schemaVersion": 2,
+  "manifestVersion": "2026.05.06.2",
+  "minimumToolVersion": "0.3.0",
 
   "wallpaper": {
     "url": "https://raw.githubusercontent.com/zachlagden/jaminator/main/assets/wallpaper.png",
@@ -15,65 +15,95 @@
 
   "programs": [
     {
-      "id": "scratch-desktop",
-      "name": "Scratch Desktop",
-      "x64": {
-        "url": "PLACEHOLDER",
-        "sha256": "PLACEHOLDER",
-        "args": "/quiet /norestart"
-      },
+      "id": "kodu",
+      "name": "Kodu Game Lab",
       "x86": {
-        "url": "PLACEHOLDER",
-        "sha256": "PLACEHOLDER",
-        "args": "/quiet /norestart"
+        "kind": "msi",
+        "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/KoduSetup_1.6.18.0.msi",
+        "sha256": "dc4b52a0ce6a728c7e9ba35040a4ac07a91bc2af927b2745e267bd60a5366096",
+        "args": "/qn /norestart ALLUSERS=1",
+        "prerequisites": [
+          {
+            "kind": "msi",
+            "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/xnafx40_redist.msi",
+            "sha256": "e6c41d692ebcba854dad4b1c52bb7ddd05926bad3105595d6596b8bab01c25e7",
+            "args": "/qn /norestart"
+          }
+        ]
       },
       "detect": {
-        "registryKey": "HKLM:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Scratch Desktop"
+        "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Kodu Game Lab"
       }
     },
+
+    {
+      "id": "scratch-desktop",
+      "name": "Scratch Desktop",
+      "x86": {
+        "kind": "exe",
+        "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/Scratch%20Desktop%20Setup%203.9.0.exe",
+        "sha256": "8983970876f8bf2332ba9cb236582c1337b162c397dbda4c9117edcdaf6b91a0",
+        "args": "/S /allusers"
+      },
+      "detect": {
+        "registryKey": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Scratch Desktop"
+      }
+    },
+
+    {
+      "id": "makecode-arcade",
+      "name": "MakeCode Arcade",
+      "x64": {
+        "kind": "exe",
+        "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/makecode-arcade-setup-win64.exe",
+        "sha256": "dfe750743947f568f45bcbc98d3f390a03752a021585215fb52cab82f4d2f4bd",
+        "args": "/S"
+      },
+      "detect": {
+        "filePath": "%LOCALAPPDATA%\\Programs\\makecode-arcade\\MakeCode Arcade.exe"
+      }
+    },
+
+    {
+      "id": "pivot-animator",
+      "name": "Pivot Animator v5",
+      "x86": {
+        "kind": "zip-extract",
+        "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/pivot-v5.zip",
+        "sha256": "569f1ad65bf15f7dac8222307dd0451bf13f67a5b01483128e07424871ff8c3f",
+        "installPath": "%ProgramFiles(x86)%\\Pivot Animator v5",
+        "exeName": "pivot.exe",
+        "shortcutName": "Pivot Animator v5",
+        "desktopShortcut": true,
+        "startMenuShortcut": true
+      },
+      "detect": {
+        "filePath": "%ProgramFiles(x86)%\\Pivot Animator v5\\pivot.exe"
+      }
+    },
+
     {
       "id": "construct2",
       "name": "Construct 2",
       "x86": {
-        "url": "PLACEHOLDER",
-        "sha256": "PLACEHOLDER",
+        "kind": "exe",
+        "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/construct2-r280-setup.exe",
+        "sha256": "62ed66089e5b7f454698d582cae95ecf5171b8aa2dc2a61345aeeb2d6d35b66a",
         "args": "/S"
       },
       "detect": {
-        "registryKey": "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Construct 2"
+        "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Construct 2"
       }
     },
-    {
-      "id": "kodu",
-      "name": "Kodu Game Lab",
-      "x86": {
-        "url": "PLACEHOLDER",
-        "sha256": "PLACEHOLDER",
-        "args": "/quiet /norestart"
-      },
-      "detect": {
-        "registryKey": "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Kodu Game Lab"
-      }
-    },
-    {
-      "id": "pivot-animator",
-      "name": "Pivot Animator",
-      "x86": {
-        "url": "PLACEHOLDER",
-        "sha256": "PLACEHOLDER",
-        "args": "/S"
-      },
-      "detect": {
-        "registryKey": "HKLM:\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Pivot Animator"
-      }
-    },
+
     {
       "id": "minecraft-education",
       "name": "Minecraft Education",
-      "x64": {
-        "url": "PLACEHOLDER",
-        "sha256": "PLACEHOLDER",
-        "args": "/quiet /norestart"
+      "x86": {
+        "kind": "exe",
+        "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/MinecraftEducationEdition_x86_1.18.32.0.exe",
+        "sha256": "44d4b2dfc6b4a25f2dcc9534998ea4b2a61bd28847342350cdbb34ee6c194510",
+        "args": "/exenoui AI_DESKTOP_SH=1 INSTALL_UPDATER=NOINSTALL /qn"
       },
       "detect": {
         "appxPackageName": "Microsoft.MinecraftEducationEdition"
@@ -86,13 +116,25 @@
       "id": "disable-cortana",
       "name": "Disable Cortana",
       "shell": "powershell",
-      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name AllowCortana -Value 0 -Type DWord"
+      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name AllowCortana -Value 0 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name DisableWebSearch -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\Windows Search' -Name ConnectedSearchUseWeb -Value 0 -Type DWord"
     },
     {
       "id": "disable-consumer-features",
       "name": "Disable Windows consumer features (suggested apps, tips)",
       "shell": "powershell",
-      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableWindowsConsumerFeatures -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableThirdPartySuggestions -Value 1 -Type DWord"
+      "script": "New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableWindowsConsumerFeatures -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableThirdPartySuggestions -Value 1 -Type DWord; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\CloudContent' -Name DisableSoftLanding -Value 1 -Type DWord"
+    },
+    {
+      "id": "disable-onedrive",
+      "name": "Uninstall OneDrive",
+      "shell": "powershell",
+      "script": "Get-Process OneDrive -EA 0 | Stop-Process -Force -EA 0; $od = if (Test-Path \"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\") { \"$env:SystemRoot\\SysWOW64\\OneDriveSetup.exe\" } else { \"$env:SystemRoot\\System32\\OneDriveSetup.exe\" }; if (Test-Path $od) { Start-Process $od '/uninstall' -Wait -NoNewWindow }; New-Item 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive' -Force | Out-Null; Set-ItemProperty 'HKLM:\\SOFTWARE\\Policies\\Microsoft\\Windows\\OneDrive' -Name DisableFileSyncNGSC -Value 1 -Type DWord"
+    },
+    {
+      "id": "remove-bloatware-appx",
+      "name": "Remove Microsoft bloatware Appx packages",
+      "shell": "powershell",
+      "script": "$bloat=@('Microsoft.BingWeather','Microsoft.BingNews','Microsoft.BingSearch','Microsoft.GetHelp','Microsoft.Getstarted','Microsoft.MicrosoftSolitaireCollection','Microsoft.People','Microsoft.SkypeApp','Microsoft.WindowsFeedbackHub','Microsoft.WindowsMaps','Microsoft.YourPhone','Microsoft.ZuneMusic','Microsoft.ZuneVideo','Microsoft.MicrosoftOfficeHub','Microsoft.Microsoft3DViewer','Microsoft.MixedReality.Portal'); foreach($n in $bloat){ Get-AppxPackage -AllUsers $n -EA 0 | Remove-AppxPackage -AllUsers -EA 0; Get-AppxProvisionedPackage -Online -EA 0 | Where-Object { $_.DisplayName -eq $n } | Remove-AppxProvisionedPackage -Online -EA 0 | Out-Null }"
     }
   ],
 
@@ -113,7 +155,7 @@
     "documentsAllowlist": {
       "enabled": true,
       "quarantineFolder": "Documents/_unsorted",
-      "allowedSubfolders": ["Jam Coding"],
+      "allowedSubfolders": ["Jam Coding", "Pivot Animator v5"],
       "allowedFiles": ["desktop.ini"]
     },
     "resetWallpaperIfChanged": true
