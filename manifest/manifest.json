@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "manifestVersion": "2026.05.06.3",
+  "manifestVersion": "2026.05.06.4",
   "minimumToolVersion": "0.3.0",
 
   "wallpaper": {
@@ -27,12 +27,15 @@
             "kind": "msi",
             "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/xnafx40_redist.msi",
             "sha256": "e6c41d692ebcba854dad4b1c52bb7ddd05926bad3105595d6596b8bab01c25e7",
-            "args": "/qn /norestart"
+            "args": "/qn /norestart",
+            "detect": {
+              "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\{2BFC7AA0-544C-4E3A-8796-67F3BE655BE9}"
+            }
           }
         ]
       },
       "detect": {
-        "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Kodu Game Lab"
+        "filePath": "%ProgramFiles(x86)%\\Microsoft Research\\Kodu Game Lab\\Kodu.exe"
       }
     },
 
@@ -46,7 +49,7 @@
         "args": "/S /allusers"
       },
       "detect": {
-        "registryKey": "HKLM\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Scratch Desktop"
+        "filePath": "%ProgramFiles%\\Scratch Desktop\\Scratch Desktop.exe"
       }
     },
 
@@ -60,7 +63,7 @@
         "args": "/S"
       },
       "detect": {
-        "filePath": "%LOCALAPPDATA%\\Programs\\makecode-arcade\\MakeCode Arcade.exe"
+        "filePath": "%LOCALAPPDATA%\\makecode_arcade\\MakeCode arcade.exe"
       }
     },
 
@@ -89,10 +92,11 @@
         "kind": "exe",
         "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/construct2-r280-setup.exe",
         "sha256": "62ed66089e5b7f454698d582cae95ecf5171b8aa2dc2a61345aeeb2d6d35b66a",
-        "args": "/S"
+        "args": "/VERYSILENT /SUPPRESSMSGBOXES /NORESTART /SP-"
       },
       "detect": {
-        "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Construct 2"
+        "registryKey": "HKLM\\SOFTWARE\\WOW6432Node\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Construct 2_is1",
+        "minVersion": "1.0.280.0"
       }
     },
 

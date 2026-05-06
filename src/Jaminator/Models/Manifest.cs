@@ -58,6 +58,9 @@ namespace Jaminator.Models
 
         /// <summary>Prerequisites installed (in order) before this entry.</summary>
         [JsonProperty("prerequisites")] public List<ArchEntry> Prerequisites { get; set; } = new();
+
+        /// <summary>Optional detect rule. If this matches, the entry is treated as already-installed and skipped.</summary>
+        [JsonProperty("detect")] public DetectEntry? Detect { get; set; }
     }
 
     public sealed class DetectEntry

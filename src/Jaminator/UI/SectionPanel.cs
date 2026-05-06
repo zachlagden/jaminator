@@ -6,7 +6,8 @@ using System.Windows.Forms;
 namespace Jaminator.UI
 {
     /// <summary>
-    /// One row in the section list: checkbox, title, status pill, Run button.
+    /// One row in the section list: a coloured accent stripe, checkbox, title,
+    /// subtitle, status pill, and Run button.
     /// </summary>
     public sealed class SectionPanel : Panel
     {
@@ -15,37 +16,47 @@ namespace Jaminator.UI
         public Label SubtitleLabel { get; }
         public Label StatusLabel { get; }
         public Button RunButton { get; }
+        public Panel AccentBar { get; }
 
         public string SectionId { get; }
-
-        /// <summary>The work to do when this section runs. Set by MainForm.</summary>
         public Func<Task>? RunHandler { get; set; }
 
-        public SectionPanel(string id, string title)
+        /// <summary>Notifies parent when the checkbox state changes.</summary>
+        public event EventHandler? CheckedChanged;
+
+        public SectionPanel(string id, string title, Color accent)
         {
             SectionId = id;
-            Height = 64;
-            Margin = new Padding(0, 0, 0, 6);
+            Height = 70;
+            Margin = new Padding(8, 0, 8, 8);
             BackColor = Color.FromArgb(40, 40, 40);
-            Padding = new Padding(12, 8, 12, 8);
-            Dock = DockStyle.Top;
+            Padding = new Padding(0, 8, 12, 8);
+
+            // Coloured stripe so each section type is visually distinct
+            AccentBar = new Panel
+            {
+                Width = 4,
+                Dock = DockStyle.Left,
+                BackColor = accent
+            };
 
             SelectCheckBox = new CheckBox
             {
                 Checked = true,
                 AutoSize = true,
-                Location = new Point(12, 22),
+                Location = new Point(16, 24),
                 ForeColor = Color.FromArgb(220, 220, 220),
                 BackColor = Color.Transparent,
                 Text = ""
             };
+            SelectCheckBox.CheckedChanged += (s, e) => CheckedChanged?.Invoke(this, EventArgs.Empty);
 
             TitleLabel = new Label
             {
                 Text = title,
-                Location = new Point(36, 8),
+                Location = new Point(40, 12),
                 AutoSize = true,
-                Font = new Font("Segoe UI", 10F, FontStyle.Bold),
+                Font = new Font("Segoe UI", 11F, FontStyle.Bold),
                 ForeColor = Color.FromArgb(240, 240, 240),
                 BackColor = Color.Transparent
             };
@@ -53,10 +64,10 @@ namespace Jaminator.UI
             SubtitleLabel = new Label
             {
                 Text = "",
-                Location = new Point(36, 30),
+                Location = new Point(40, 36),
                 AutoSize = true,
-                Font = new Font("Segoe UI", 8.5F),
-                ForeColor = Color.FromArgb(160, 160, 160),
+                Font = new Font("Segoe UI", 9F),
+                ForeColor = Color.FromArgb(170, 170, 170),
                 BackColor = Color.Transparent
             };
 
@@ -65,8 +76,8 @@ namespace Jaminator.UI
                 Text = "Ready",
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
                 AutoSize = true,
-                Font = new Font("Segoe UI", 8.5F, FontStyle.Bold),
-                ForeColor = Color.FromArgb(160, 160, 160),
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                ForeColor = Color.FromArgb(170, 170, 170),
                 BackColor = Color.Transparent
             };
 
@@ -74,42 +85,48 @@ namespace Jaminator.UI
             {
                 Text = "Run",
                 Width = 80,
-                Height = 30,
+                Height = 32,
                 Anchor = AnchorStyles.Top | AnchorStyles.Right,
-                BackColor = Color.FromArgb(0, 120, 215),
+                BackColor = accent,
                 ForeColor = Color.White,
                 FlatStyle = FlatStyle.Flat,
-                Font = new Font("Segoe UI", 9F, FontStyle.Bold)
+                Font = new Font("Segoe UI", 9F, FontStyle.Bold),
+                Cursor = Cursors.Hand
             };
             RunButton.FlatAppearance.BorderSize = 0;
             RunButton.Click += async (_, _) => await RunOnceAsync();
 
+            Controls.Add(AccentBar);
             Controls.Add(SelectCheckBox);
             Controls.Add(TitleLabel);
             Controls.Add(SubtitleLabel);
             Controls.Add(StatusLabel);
             Controls.Add(RunButton);
 
-            Resize += (_, _) => Layout();
-            Layout();
+            Resize += (_, _) => Realign();
+            Realign();
         }
 
-        private new void Layout()
+        private void Realign()
         {
-            RunButton.Location = new Point(Width - RunButton.Width - 12, 16);
-            StatusLabel.Location = new Point(RunButton.Left - StatusLabel.Width - 12, 22);
+            RunButton.Location = new Point(Width - RunButton.Width - 12, 18);
+            StatusLabel.Location = new Point(RunButton.Left - StatusLabel.Width - 14, 24);
         }
 
-        public void SetSubtitle(string text)
-        {
-            SubtitleLabel.Text = text;
-        }
+        public void SetSubtitle(string text) => SubtitleLabel.Text = text;
 
         public void SetStatus(string text, Color color)
         {
             StatusLabel.Text = text;
             StatusLabel.ForeColor = color;
-            Layout();
+            Realign();
+        }
+
+        public void SetEnabled(bool enabled)
+        {
+            SelectCheckBox.Enabled = enabled;
+            RunButton.Enabled = enabled;
+            ForeColor = enabled ? Color.FromArgb(240, 240, 240) : Color.FromArgb(120, 120, 120);
         }
 
         public async Task RunOnceAsync()

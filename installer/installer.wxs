@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+
+  <!--
+    Jaminator MSI installer.
+    Build: wix build installer/installer.wxs -d Version=X.Y.Z.0 -d SourceDir=<bin/Release/net48> -o build/Jaminator.msi
+  -->
+
+  <Package Name="Jaminator"
+           Manufacturer="Jam Coding"
+           Version="$(var.Version)"
+           UpgradeCode="21390A38-5337-4A33-A236-2DA81DC24110"
+           Compressed="yes"
+           Scope="perMachine"
+           InstallerVersion="500">
+
+    <SummaryInformation Description="Jaminator — Jam Coding laptop maintenance"
+                        Manufacturer="Jam Coding" />
+
+    <MajorUpgrade DowngradeErrorMessage="A newer version of [ProductName] is already installed."
+                  Schedule="afterInstallInitialize" />
+
+    <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
+
+    <!-- Add/Remove Programs metadata -->
+    <Icon Id="JaminatorIcon" SourceFile="$(var.SourceDir)\Jaminator.exe" />
+    <Property Id="ARPPRODUCTICON" Value="JaminatorIcon" />
+    <Property Id="ARPHELPLINK" Value="https://github.com/zachlagden/jaminator" />
+    <Property Id="ARPURLINFOABOUT" Value="https://github.com/zachlagden/jaminator" />
+    <Property Id="ARPNOREPAIR" Value="1" />
+    <!-- ARPNOMODIFY is set by WixUI_Minimal already -->
+
+
+    <Feature Id="Main" Title="Jaminator" Level="1" Display="expand"
+             Description="The Jaminator EXE, dependency, scheduled login task, and Start Menu shortcut.">
+      <ComponentGroupRef Id="JaminatorFiles" />
+      <ComponentGroupRef Id="JaminatorShortcut" />
+    </Feature>
+
+    <!-- Standard Welcome → Install → Progress → Finish wizard. WixUI_Minimal
+         keeps it short (3 dialogs) which suits a single-purpose tool. -->
+    <ui:WixUI Id="WixUI_Minimal" />
+    <UIRef Id="WixUI_ErrorProgressText" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open Jaminator now" />
+    <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
+
+    <!-- Run Jaminator after a successful first-time install if the user
+         left the "Open Jaminator now" checkbox ticked on the finish dialog. -->
+    <CustomAction Id="LaunchApp"
+                  FileRef="JaminatorExeFile"
+                  ExeCommand=""
+                  Return="asyncNoWait"
+                  Impersonate="yes" />
+    <InstallExecuteSequence>
+      <Custom Action="LaunchApp"
+              After="InstallFinalize"
+              Condition="NOT Installed AND WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1" />
+    </InstallExecuteSequence>
+
+    <StandardDirectory Id="ProgramFiles64Folder">
+      <Directory Id="INSTALLDIR" Name="Jaminator" />
+    </StandardDirectory>
+
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="ApplicationMenuDir" Name="Jaminator" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="JaminatorFiles" Directory="INSTALLDIR">
+      <Component>
+        <File Id="JaminatorExeFile"
+              Source="$(var.SourceDir)\Jaminator.exe"
+              KeyPath="yes" />
+      </Component>
+      <Component>
+        <File Source="$(var.SourceDir)\Newtonsoft.Json.dll" KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="JaminatorShortcut" Directory="ApplicationMenuDir">
+      <Component Id="StartMenuShortcut" Guid="4388B597-0CAE-4233-A882-13AD669B0CA7">
+        <Shortcut Id="JaminatorStartMenu"
+                  Name="Jaminator"
+                  Description="Jam Coding laptop maintenance"
+                  Target="[#JaminatorExeFile]"
+                  WorkingDirectory="INSTALLDIR"
+                  Icon="JaminatorIcon" />
+        <RemoveFolder Id="RemoveApplicationMenuDir" On="uninstall" />
+        <RegistryValue Root="HKMU"
+                       Key="Software\Jaminator"
+                       Name="installed"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
+    <!-- Custom actions: register / unregister the logon scheduled task by
+         calling the EXE itself. Deferred so they run with elevated privileges. -->
+    <CustomAction Id="RegisterTask"
+                  FileRef="JaminatorExeFile"
+                  ExeCommand="--register-task"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="check" />
+
+    <CustomAction Id="UnregisterTask"
+                  FileRef="JaminatorExeFile"
+                  ExeCommand="--unregister-task"
+                  Execute="deferred"
+                  Impersonate="no"
+                  Return="ignore" />
+
+    <InstallExecuteSequence>
+      <Custom Action="RegisterTask"
+              After="InstallFiles"
+              Condition="NOT Installed OR REINSTALL" />
+      <Custom Action="UnregisterTask"
+              Before="RemoveFiles"
+              Condition="REMOVE=&quot;ALL&quot;" />
+      <!-- LaunchApp custom action (defined above) is sequenced via its own InstallExecuteSequence above -->
+    </InstallExecuteSequence>
+
+  </Package>
+</Wix>

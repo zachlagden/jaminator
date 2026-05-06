@@ -7,11 +7,20 @@ namespace Jaminator
 {
     internal static class Program
     {
-        public const string ToolVersion = "0.4.0";
+        public const string ToolVersion = "0.5.0";
         public const string ManifestUrl =
             "https://raw.githubusercontent.com/zachlagden/jaminator/main/manifest/manifest.json";
 
-        public enum RunMode { Ui, RunAll, LoginMode, Install, Uninstall }
+        public enum RunMode
+        {
+            Ui,
+            RunAll,
+            LoginMode,
+            Install,
+            Uninstall,
+            RegisterTask,
+            UnregisterTask
+        }
 
         public static RunMode Mode { get; private set; }
 
@@ -20,12 +29,20 @@ namespace Jaminator
         {
             Mode = ParseMode(args);
 
-            // Install / uninstall are non-UI: do work, return exit code, exit.
-            if (Mode == RunMode.Install || Mode == RunMode.Uninstall)
+            // Headless ops: run, return exit code, never show UI.
+            if (Mode == RunMode.Install || Mode == RunMode.Uninstall ||
+                Mode == RunMode.RegisterTask || Mode == RunMode.UnregisterTask)
             {
                 var log = new Logger();
                 log.OnMessage += line => Console.WriteLine(line);
-                return Mode == RunMode.Install ? Installer.Install(log) : Installer.Uninstall(log);
+                return Mode switch
+                {
+                    RunMode.Install => Installer.Install(log),
+                    RunMode.Uninstall => Installer.Uninstall(log),
+                    RunMode.RegisterTask => Installer.RegisterScheduledTask(log),
+                    RunMode.UnregisterTask => Installer.UnregisterScheduledTask(log),
+                    _ => 1
+                };
             }
 
             Application.EnableVisualStyles();
@@ -39,12 +56,13 @@ namespace Jaminator
             bool Has(string flag) => args.Any(a => a.Equals(flag, StringComparison.OrdinalIgnoreCase));
             if (Has("--install")) return RunMode.Install;
             if (Has("--uninstall")) return RunMode.Uninstall;
+            if (Has("--register-task")) return RunMode.RegisterTask;
+            if (Has("--unregister-task")) return RunMode.UnregisterTask;
             if (Has("--login-mode")) return RunMode.LoginMode;
             if (Has("--run-all")) return RunMode.RunAll;
             return RunMode.Ui;
         }
 
-        // Convenience flags consumed elsewhere
         public static bool RunAllOnStart => Mode == RunMode.RunAll || Mode == RunMode.LoginMode;
         public static bool ExitAfterRun  => Mode == RunMode.RunAll || Mode == RunMode.LoginMode;
         public static bool LoginModeOnly => Mode == RunMode.LoginMode;

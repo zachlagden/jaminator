@@ -10,17 +10,26 @@ namespace Jaminator.UI
 {
     internal sealed partial class MainForm : Form
     {
-        /// <summary>
-        /// Sections that run automatically at user logon. Everything else is
-        /// gated behind a tech clicking a button — we never disrupt a lesson
-        /// by wiping temp / installing software / running registry tweaks
-        /// without explicit consent.
-        /// </summary>
+        // Sections that the scheduled task runs at every user logon. Everything
+        // else is manual — only fires when the tech clicks. Anything missing
+        // here is treated as "manual / disruptive" and goes in the bottom group.
         private static readonly HashSet<string> LoginSafeSections = new HashSet<string>
         {
             "wallpaper",
             "folders"
         };
+
+        // Per-section accent colour + one-line description. Keeps the UI honest
+        // about what each action does so techs can pick safely.
+        private static readonly Dictionary<string, (Color Accent, string Help)> SectionStyle =
+            new Dictionary<string, (Color, string)>
+            {
+                ["cleanup"]   = (Color.FromArgb(255, 152, 0),  "Wipes temp files, clears browser caches, quarantines stray Documents items."),
+                ["wallpaper"] = (Color.FromArgb(76, 175, 80),  "Downloads + applies the canonical Jam Coding wallpaper. Reverts kid-changes."),
+                ["folders"]   = (Color.FromArgb(76, 175, 80),  "Creates the school folder layout under Documents/."),
+                ["programs"]  = (Color.FromArgb(0, 150, 199),  "Installs/updates educational software. Skips programs already on the laptop."),
+                ["commands"]  = (Color.FromArgb(239, 83, 80),  "Admin scripts (disable Cortana, kill OneDrive, remove Microsoft bloatware…).")
+            };
 
         private readonly Logger _log;
         private readonly ManifestFetcher _fetcher = new ManifestFetcher();
@@ -31,14 +40,12 @@ namespace Jaminator.UI
         private readonly CommandRunner _commands;
         private readonly MsiInstaller _msi;
         private readonly SelfUpdater _updater;
+        private readonly InternetGate _gate;
 
         private Manifest? _manifest;
 
         public MainForm()
         {
-            // The form is shown only in interactive mode. Login-mode hides it
-            // immediately on creation so we get the message pump for HttpClient
-            // without actually flashing a window at the user.
             InitializeComponent();
             if (Program.LoginModeOnly)
             {
@@ -57,24 +64,31 @@ namespace Jaminator.UI
             _commands = new CommandRunner(_log);
             _msi = new MsiInstaller(_log, _downloader);
             _updater = new SelfUpdater(_log);
+            _gate = new InternetGate(Program.ManifestUrl, _log);
 
-            UpdateInstallButtonVisibility();
+            UpdateHeaderButtonsVisibility();
 
             Load += OnLoad;
             _runAllButton.Click += async (_, _) => await RunAllAsync();
             _installButton.Click += OnInstallClick;
+            _uninstallButton.Click += OnUninstallClick;
         }
 
-        private void UpdateInstallButtonVisibility()
+        private void UpdateHeaderButtonsVisibility()
         {
-            if (Installer.IsInstalled || Installer.IsRunningFromInstallDir)
-            {
-                _installButton.Visible = false;
-            }
-            else
-            {
-                _installButton.Visible = true;
-            }
+            _installButton.Visible = !Installer.IsInstalled;
+            _uninstallButton.Visible = Installer.IsInstalled;
+        }
+
+        private void SetOfflineOverlay(bool show)
+        {
+            _offlineOverlay.Visible = show;
+            if (show) _offlineOverlay.BringToFront();
+            // Block all action buttons while offline so the user can't trigger
+            // any download/install that's guaranteed to fail.
+            _runAllButton.Enabled = !show && _manifest != null;
+            _installButton.Enabled = !show;
+            _uninstallButton.Enabled = !show;
         }
 
         private async void OnLoad(object? sender, EventArgs e)
@@ -82,14 +96,23 @@ namespace Jaminator.UI
             _log.Info($"Jaminator v{Program.ToolVersion} ({Program.Mode})");
             _log.Info($"Architecture: {(Environment.Is64BitOperatingSystem ? "64-bit" : "32-bit")} Windows");
 
-            // Self-update only runs in interactive mode — at logon we never want
-            // a self-update dialog popping up unexpectedly.
+            // Block until we can actually reach GitHub. Without internet, every
+            // section is broken (manifest fetch fails, downloads fail) — better
+            // to show a clear "no internet" state than half-fail everywhere.
+            await _gate.WaitUntilOnlineAsync(online =>
+            {
+                if (InvokeRequired) { BeginInvoke(new Action(() => SetOfflineOverlay(!online))); return; }
+                SetOfflineOverlay(!online);
+            });
+
+            // Auto-update only in interactive UI mode. Logon-time auto-runs must
+            // never trigger a Windows Installer dialog while a kid is logging in.
             if (Program.Mode == Program.RunMode.Ui)
             {
                 _ = Task.Run(async () =>
                 {
                     var info = await _updater.CheckAsync(Program.ToolVersion);
-                    if (info != null) PromptUpdate(info);
+                    if (info != null) AutoApplyUpdate(info);
                 });
             }
 
@@ -100,6 +123,7 @@ namespace Jaminator.UI
                 _log.Info($"Manifest version: {_manifest.ManifestVersion}");
                 _manifestVersionLabel.Text = $"Manifest: {_manifest.ManifestVersion}";
                 BuildSections(_manifest);
+                UpdateRunAllButtonText();
                 _runAllButton.Enabled = true;
 
                 if (Program.RunAllOnStart)
@@ -125,15 +149,14 @@ namespace Jaminator.UI
             }
         }
 
-        private void PromptUpdate(UpdateInfo info)
+        private void AutoApplyUpdate(UpdateInfo info)
         {
-            if (InvokeRequired) { BeginInvoke(new Action<UpdateInfo>(PromptUpdate), info); return; }
-            var ans = MessageBox.Show(
-                $"A newer Jaminator is available: {info.Version}\n\n" +
-                "Download and apply now? The app will restart automatically.",
-                "Update available",
-                MessageBoxButtons.YesNo, MessageBoxIcon.Information);
-            if (ans != DialogResult.Yes) return;
+            if (InvokeRequired) { BeginInvoke(new Action<UpdateInfo>(AutoApplyUpdate), info); return; }
+
+            _log.Info($"Update available: {info.Version} — applying automatically");
+            // Toast-like in-app notice; no modal dialog so the tool still works
+            // for them if they happen to be mid-task when this fires.
+            Text = $"Jaminator — updating to {info.Version}…";
 
             _ = Task.Run(async () =>
             {
@@ -141,8 +164,16 @@ namespace Jaminator.UI
                 {
                     BeginInvoke(new Action(() =>
                     {
-                        _log.Info("Update applied — exiting for restart");
+                        _log.Info("Update launched — exiting so MSI can replace files");
                         Application.Exit();
+                    }));
+                }
+                else
+                {
+                    BeginInvoke(new Action(() =>
+                    {
+                        Text = "Jaminator";
+                        _log.Warn("Auto-update failed — continuing on current version");
                     }));
                 }
             });
@@ -152,8 +183,8 @@ namespace Jaminator.UI
         {
             var ans = MessageBox.Show(
                 $"Install Jaminator to {Installer.InstallDir} and register the auto-logon scheduled task?\n\n" +
-                "After install, the login-safe sections (folders, wallpaper) will run automatically " +
-                "on every user logon. Cleanup, programs, and admin commands stay manual.",
+                "After install, the login-safe sections (Wallpaper, Folders) will run automatically " +
+                "on every user logon. Cleanup, Programs, and Commands stay manual.",
                 "Install Jaminator",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Question);
             if (ans != DialogResult.Yes) return;
@@ -165,7 +196,7 @@ namespace Jaminator.UI
                 BeginInvoke(new Action(() =>
                 {
                     _installButton.Enabled = true;
-                    UpdateInstallButtonVisibility();
+                    UpdateHeaderButtonsVisibility();
                     if (rc == 0)
                         MessageBox.Show("Installed. Open from Start Menu to run things manually.",
                                         "Done", MessageBoxButtons.OK, MessageBoxIcon.Information);
@@ -173,50 +204,76 @@ namespace Jaminator.UI
             });
         }
 
+        private void OnUninstallClick(object? sender, EventArgs e)
+        {
+            var ans = MessageBox.Show(
+                $"Uninstall Jaminator from {Installer.InstallDir}?\n\n" +
+                "Removes the scheduled task and Start Menu shortcut. Logs in C:\\ProgramData\\Jaminator\\ are kept.",
+                "Uninstall Jaminator",
+                MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
+            if (ans != DialogResult.Yes) return;
+
+            _uninstallButton.Enabled = false;
+            _ = Task.Run(() =>
+            {
+                var rc = Installer.Uninstall(_log);
+                BeginInvoke(new Action(() =>
+                {
+                    _uninstallButton.Enabled = true;
+                    UpdateHeaderButtonsVisibility();
+                    if (rc == 0)
+                    {
+                        MessageBox.Show("Uninstalled. Closing.", "Done",
+                                        MessageBoxButtons.OK, MessageBoxIcon.Information);
+                        Application.Exit();
+                    }
+                }));
+            });
+        }
+
         private void BuildSections(Manifest m)
         {
-            _sectionFlow.Controls.Clear();
+            _autoFlow.Controls.Clear();
+            _manualFlow.Controls.Clear();
 
-            if (m.Cleanup != null)
-            {
-                AddSection("cleanup", "Cleanup",
-                    $"{m.Cleanup.TempPaths.Count} temp paths, recycle bin, browser cache, allowlist",
-                    () => _cleanup.RunAsync(m.Cleanup, m.Wallpaper));
-            }
-
+            // The order here determines the "Run All" execution order too.
             if (m.Wallpaper != null)
             {
                 AddSection("wallpaper", "Wallpaper",
                     System.IO.Path.GetFileName(m.Wallpaper.Url),
                     () => _wallpaper.EnsureAsync(m.Wallpaper, forceReset: false));
             }
-
             if (m.Folders.Count > 0)
             {
                 AddSection("folders", "Folders",
-                    $"{m.Folders.Count} folder(s) under user profile",
+                    string.Join(", ", m.Folders.ConvertAll(f => f.Path)),
                     () => Task.Run(() => _folders.EnsureFolders(m.Folders)));
             }
-
+            if (m.Cleanup != null)
+            {
+                AddSection("cleanup", "Cleanup",
+                    $"{m.Cleanup.TempPaths.Count} temp paths · recycle bin · browser caches · Documents allowlist",
+                    () => _cleanup.RunAsync(m.Cleanup, m.Wallpaper));
+            }
             if (m.Programs.Count > 0)
             {
+                var names = string.Join(", ", m.Programs.ConvertAll(p => p.Name));
                 AddSection("programs", "Programs",
-                    $"{m.Programs.Count} installer(s) — installs missing/outdated",
+                    $"{m.Programs.Count} installer(s): {names}",
                     () => _msi.InstallAllAsync(m.Programs));
             }
-
             if (m.Commands.Count > 0)
             {
+                var names = string.Join(", ", m.Commands.ConvertAll(c => c.Name));
                 AddSection("commands", "Commands",
-                    $"{m.Commands.Count} admin command(s)",
+                    $"{m.Commands.Count}: {names}",
                     () => _commands.RunAsync(m.Commands));
             }
 
-            // In login mode, dim the disruptive sections so the log clearly shows
-            // they were intentionally skipped.
             if (Program.LoginModeOnly)
             {
-                foreach (var ctrl in _sectionFlow.Controls)
+                foreach (FlowLayoutPanel flow in new[] { _autoFlow, _manualFlow })
+                foreach (Control ctrl in flow.Controls)
                 {
                     if (ctrl is SectionPanel s && !LoginSafeSections.Contains(s.SectionId))
                     {
@@ -227,13 +284,31 @@ namespace Jaminator.UI
             }
         }
 
-        private SectionPanel AddSection(string id, string title, string subtitle, Func<Task>? handler)
+        private void AddSection(string id, string title, string subtitle, Func<Task>? handler)
         {
-            var s = new SectionPanel(id, title);
-            s.SetSubtitle(subtitle);
-            s.RunHandler = handler;
-            _sectionFlow.Controls.Add(s);
-            return s;
+            var (accent, help) = SectionStyle.TryGetValue(id, out var s)
+                ? s
+                : (Color.FromArgb(120, 120, 120), "");
+
+            var panel = new SectionPanel(id, title, accent);
+            // Show what the action does first (concrete), then the manifest-derived contents
+            panel.SetSubtitle(string.IsNullOrEmpty(help) ? subtitle : help + "  ·  " + subtitle);
+            panel.RunHandler = handler;
+            panel.CheckedChanged += (_, _) => UpdateRunAllButtonText();
+
+            var target = LoginSafeSections.Contains(id) ? _autoFlow : _manualFlow;
+            target.Controls.Add(panel);
+        }
+
+        private void UpdateRunAllButtonText()
+        {
+            int n = 0;
+            foreach (FlowLayoutPanel flow in new[] { _autoFlow, _manualFlow })
+                foreach (Control ctrl in flow.Controls)
+                    if (ctrl is SectionPanel s && s.SelectCheckBox.Checked && s.RunButton.Enabled) n++;
+
+            _runAllButton.Text = n == 0 ? "Nothing selected" : $"Run {n} section" + (n == 1 ? "" : "s");
+            _runAllButton.Enabled = n > 0 && _manifest != null;
         }
 
         private async Task RunAllAsync()
@@ -244,7 +319,8 @@ namespace Jaminator.UI
                 ? "=== Login auto-run started ==="
                 : "=== Run All started ===");
 
-            foreach (var ctrl in _sectionFlow.Controls)
+            foreach (FlowLayoutPanel flow in new[] { _autoFlow, _manualFlow })
+            foreach (Control ctrl in flow.Controls)
             {
                 if (ctrl is SectionPanel s && s.SelectCheckBox.Checked && s.RunButton.Enabled)
                 {
@@ -259,7 +335,7 @@ namespace Jaminator.UI
             _log.Info(Program.LoginModeOnly
                 ? "=== Login auto-run complete ==="
                 : "=== Run All complete ===");
-            _runAllButton.Enabled = true;
+            UpdateRunAllButtonText();
         }
 
         private void UiAppendLog(string line)

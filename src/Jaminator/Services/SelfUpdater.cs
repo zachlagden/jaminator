@@ -8,10 +8,15 @@ using Newtonsoft.Json.Linq;
 
 namespace Jaminator.Services
 {
+    /// <summary>
+    /// Self-update via the MSI release asset. We download the new MSI, then
+    /// hand off to msiexec — Windows' own MajorUpgrade flow swaps files,
+    /// re-registers the scheduled task, and updates Add/Remove Programs.
+    /// </summary>
     public sealed class SelfUpdater
     {
         private const string ReleasesApi = "https://api.github.com/repos/zachlagden/jaminator/releases/latest";
-        private const string AssetName = "Jaminator.exe";
+        private const string MsiAssetName = "Jaminator.msi";
 
         private static readonly HttpClient Http = new HttpClient
         {
@@ -20,7 +25,7 @@ namespace Jaminator.Services
                 UserAgent = { ProductInfoHeaderValue.Parse("Jaminator/1.0") },
                 Accept = { MediaTypeWithQualityHeaderValue.Parse("application/vnd.github+json") }
             },
-            Timeout = TimeSpan.FromSeconds(20)
+            Timeout = TimeSpan.FromSeconds(60)
         };
 
         private readonly Logger _log;
@@ -39,19 +44,23 @@ namespace Jaminator.Services
                 if (string.IsNullOrEmpty(version)) return null;
                 if (CompareSemver(version, currentVersion) <= 0) return null;
 
-                string? exeUrl = null;
+                string? msiUrl = null;
                 foreach (var a in doc["assets"] ?? new JArray())
                 {
                     var n = (string?)a["name"] ?? "";
-                    if (string.Equals(n, AssetName, StringComparison.OrdinalIgnoreCase))
+                    if (string.Equals(n, MsiAssetName, StringComparison.OrdinalIgnoreCase))
                     {
-                        exeUrl = (string?)a["browser_download_url"];
+                        msiUrl = (string?)a["browser_download_url"];
                         break;
                     }
                 }
-                if (string.IsNullOrEmpty(exeUrl)) return null;
+                if (string.IsNullOrEmpty(msiUrl))
+                {
+                    _log.Warn($"Latest release {tag} has no {MsiAssetName} asset — skipping update");
+                    return null;
+                }
 
-                return new UpdateInfo(version, name, exeUrl!);
+                return new UpdateInfo(version, name, msiUrl!);
             }
             catch (Exception ex)
             {
@@ -64,35 +73,29 @@ namespace Jaminator.Services
         {
             try
             {
-                var current = Process.GetCurrentProcess().MainModule!.FileName;
-                var stagingPath = current + ".new";
-                var oldPath = current + ".old";
+                var msiPath = Path.Combine(Path.GetTempPath(), $"Jaminator-{info.Version}.msi");
 
                 _log.Info($"Downloading update {info.Version} from {info.DownloadUrl}");
                 using (var resp = await Http.GetAsync(info.DownloadUrl))
                 {
                     resp.EnsureSuccessStatusCode();
-                    using var fs = File.Create(stagingPath);
+                    using var fs = File.Create(msiPath);
                     await resp.Content.CopyToAsync(fs);
                 }
+                _log.Info($"Downloaded to {msiPath}");
 
-                // Stage replacement: relaunch a tiny script that swaps the EXE after we exit.
-                var ps = $@"
-$ErrorActionPreference = 'Stop'
-Start-Sleep -Seconds 1
-if (Test-Path '{oldPath}') {{ Remove-Item '{oldPath}' -Force }}
-Move-Item -LiteralPath '{current}' -Destination '{oldPath}' -Force
-Move-Item -LiteralPath '{stagingPath}' -Destination '{current}' -Force
-Start-Process -FilePath '{current}'
-";
-                var scriptPath = Path.Combine(Path.GetTempPath(), "jaminator-update.ps1");
-                File.WriteAllText(scriptPath, ps);
-
-                Process.Start(new ProcessStartInfo("powershell.exe",
-                    $"-NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -File \"{scriptPath}\"")
+                // Hand off to msiexec. /qb gives a tiny progress bar so the user knows
+                // something's happening; /qn would be totally silent. MajorUpgrade in
+                // the .msi handles the file swap + re-runs custom actions.
+                var psi = new ProcessStartInfo("msiexec.exe",
+                    $"/i \"{msiPath}\" /qb /norestart /L*V \"{msiPath}.log\"")
                 {
-                    UseShellExecute = true
-                });
+                    UseShellExecute = true,
+                    Verb = "runas" // ensure elevation if not already
+                };
+                Process.Start(psi);
+
+                _log.Info("msiexec launched — exiting so it can replace files");
                 return true;
             }
             catch (Exception ex)

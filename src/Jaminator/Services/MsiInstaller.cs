@@ -70,6 +70,12 @@ namespace Jaminator.Services
 
         private async Task RunInstallerAsync(string programId, ArchEntry arch, bool isPrereq)
         {
+            if (Detector.IsInstalled(arch.Detect))
+            {
+                _log.Info($"  {(isPrereq ? "prerequisite" : "installer")} already present, skipping");
+                return;
+            }
+
             if (string.IsNullOrWhiteSpace(arch.Url) ||
                 arch.Url.StartsWith("PLACEHOLDER", StringComparison.OrdinalIgnoreCase))
             {
