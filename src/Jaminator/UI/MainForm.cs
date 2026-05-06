@@ -60,10 +60,22 @@ namespace Jaminator.UI
                 _manifestVersionLabel.Text = $"Manifest: {_manifest.ManifestVersion}";
                 BuildSections(_manifest);
                 _runAllButton.Enabled = true;
+
+                if (Program.RunAllOnStart)
+                {
+                    _log.Info("CLI flag --run-all: executing all sections automatically");
+                    await RunAllAsync();
+                    if (Program.ExitAfterRun)
+                    {
+                        _log.Info("Exiting (CLI mode)");
+                        Application.Exit();
+                    }
+                }
             }
             catch (Exception ex)
             {
                 _log.Error("Failed to fetch manifest", ex);
+                if (Program.ExitAfterRun) Application.Exit();
             }
         }
 

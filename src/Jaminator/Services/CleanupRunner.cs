@@ -41,7 +41,13 @@ namespace Jaminator.Services
                 {
                     var rc = SHEmptyRecycleBin(IntPtr.Zero, null,
                                                SHERB_NOCONFIRMATION | SHERB_NOPROGRESSUI | SHERB_NOSOUND);
-                    _log.Info(rc == 0 ? "Recycle bin emptied" : $"Recycle bin: rc={rc}");
+                    // 0 = success, 0x8000FFFF (-2147418113) = E_UNEXPECTED, returned when
+                    // the recycle bin is already empty or the call is from a non-interactive
+                    // session — neither is an error worth flagging.
+                    const uint AlreadyEmpty = 0x8000FFFF;
+                    if (rc == 0) _log.Info("Recycle bin emptied");
+                    else if (rc == AlreadyEmpty) _log.Info("Recycle bin: already empty / no live session");
+                    else _log.Warn($"Recycle bin: rc=0x{rc:X8}");
                 }
 
                 if (cfg.ClearBrowserCache != null) WipeBrowserCaches(cfg.ClearBrowserCache);
