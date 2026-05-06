@@ -1,6 +1,6 @@
 {
   "schemaVersion": 2,
-  "manifestVersion": "2026.05.06.2",
+  "manifestVersion": "2026.05.06.3",
   "minimumToolVersion": "0.3.0",
 
   "wallpaper": {
@@ -41,7 +41,7 @@
       "name": "Scratch Desktop",
       "x86": {
         "kind": "exe",
-        "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/Scratch%20Desktop%20Setup%203.9.0.exe",
+        "url": "https://github.com/zachlagden/jaminator/releases/download/installers-v1/Scratch.Desktop.Setup.3.9.0.exe",
         "sha256": "8983970876f8bf2332ba9cb236582c1337b162c397dbda4c9117edcdaf6b91a0",
         "args": "/S /allusers"
       },
