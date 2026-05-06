@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
-     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui"
+     xmlns:util="http://wixtoolset.org/schemas/v4/wxs/util">
 
   <!--
     Jaminator MSI installer.
@@ -23,9 +24,10 @@
 
     <MediaTemplate EmbedCab="yes" CompressionLevel="high" />
 
-    <!-- Add/Remove Programs metadata -->
-    <Icon Id="JaminatorIcon" SourceFile="..\src\Jaminator\Jaminator.ico" />
-    <Property Id="ARPPRODUCTICON" Value="JaminatorIcon" />
+    <!-- Add/Remove Programs metadata. The Icon Id must end in .ico for Windows
+         to render shortcut icons correctly (otherwise treated as exe icon). -->
+    <Icon Id="Jaminator.ico" SourceFile="..\src\Jaminator\Jaminator.ico" />
+    <Property Id="ARPPRODUCTICON" Value="Jaminator.ico" />
     <Property Id="ARPHELPLINK" Value="https://github.com/zachlagden/jaminator" />
     <Property Id="ARPURLINFOABOUT" Value="https://github.com/zachlagden/jaminator" />
     <Property Id="ARPNOREPAIR" Value="1" />
@@ -36,7 +38,12 @@
              Description="The Jaminator EXE, dependency, scheduled login task, and Start Menu shortcut.">
       <ComponentGroupRef Id="JaminatorFiles" />
       <ComponentGroupRef Id="JaminatorShortcut" />
+      <ComponentGroupRef Id="JaminatorDesktopShortcut" />
     </Feature>
+
+    <!-- Desktop shortcut — installed by default. Override with
+         msiexec /i Jaminator.msi DESKTOPSHORTCUT=0  to skip it. -->
+    <Property Id="DESKTOPSHORTCUT" Value="1" />
 
     <!-- Welcome+EULA combined → Install → Progress → Finish.
          WixUI_Minimal renders the EULA RTF on the welcome screen with an
@@ -47,18 +54,21 @@
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOXTEXT" Value="Open Jaminator now" />
     <Property Id="WIXUI_EXITDIALOGOPTIONALCHECKBOX" Value="1" />
 
-    <!-- Run Jaminator after a successful first-time install if the user
-         left the "Open Jaminator now" checkbox ticked on the finish dialog. -->
-    <CustomAction Id="LaunchApp"
-                  FileRef="JaminatorExeFile"
-                  ExeCommand=""
-                  Return="asyncNoWait"
-                  Impersonate="yes" />
-    <InstallExecuteSequence>
-      <Custom Action="LaunchApp"
-              After="InstallFinalize"
-              Condition="NOT Installed AND WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1" />
-    </InstallExecuteSequence>
+    <!-- Standard "launch app on finish" pattern: WixShellExec from the Util
+         extension runs in UI context (so it can read WIXUI_EXITDIALOG... props)
+         and is wired to the ExitDialog's Finish button via UI Publish. -->
+    <Property Id="WixShellExecTarget" Value="[#JaminatorExeFile]" />
+    <CustomAction Id="LaunchApplication"
+                  DllEntry="WixShellExec"
+                  Impersonate="yes"
+                  BinaryRef="Wix4UtilCA_X86" />
+    <UI>
+      <Publish Dialog="ExitDialog"
+               Control="Finish"
+               Event="DoAction"
+               Value="LaunchApplication"
+               Condition="WIXUI_EXITDIALOGOPTIONALCHECKBOX = 1 and NOT Installed" />
+    </UI>
 
     <StandardDirectory Id="ProgramFiles64Folder">
       <Directory Id="INSTALLDIR" Name="Jaminator" />
@@ -67,6 +77,8 @@
     <StandardDirectory Id="ProgramMenuFolder">
       <Directory Id="ApplicationMenuDir" Name="Jaminator" />
     </StandardDirectory>
+
+    <StandardDirectory Id="DesktopFolder" />
 
     <ComponentGroup Id="JaminatorFiles" Directory="INSTALLDIR">
       <Component>
@@ -79,6 +91,23 @@
       </Component>
     </ComponentGroup>
 
+    <ComponentGroup Id="JaminatorDesktopShortcut" Directory="DesktopFolder">
+      <Component Id="DesktopShortcut" Guid="9B5C4E86-22C9-4A1F-9FC4-B2D5C7AA7C19" Condition="DESKTOPSHORTCUT=&quot;1&quot;">
+        <Shortcut Id="JaminatorDesktopShortcut"
+                  Name="Jaminator"
+                  Description="Jam Coding laptop maintenance"
+                  Target="[#JaminatorExeFile]"
+                  WorkingDirectory="INSTALLDIR"
+                  Icon="Jaminator.ico" />
+        <RegistryValue Root="HKMU"
+                       Key="Software\Jaminator"
+                       Name="desktopShortcut"
+                       Type="integer"
+                       Value="1"
+                       KeyPath="yes" />
+      </Component>
+    </ComponentGroup>
+
     <ComponentGroup Id="JaminatorShortcut" Directory="ApplicationMenuDir">
       <Component Id="StartMenuShortcut" Guid="4388B597-0CAE-4233-A882-13AD669B0CA7">
         <Shortcut Id="JaminatorStartMenu"
@@ -86,7 +115,7 @@
                   Description="Jam Coding laptop maintenance"
                   Target="[#JaminatorExeFile]"
                   WorkingDirectory="INSTALLDIR"
-                  Icon="JaminatorIcon" />
+                  Icon="Jaminator.ico" />
         <RemoveFolder Id="RemoveApplicationMenuDir" On="uninstall" />
         <RegistryValue Root="HKMU"
                        Key="Software\Jaminator"

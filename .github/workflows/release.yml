@@ -26,30 +26,40 @@ jobs:
         with:
           dotnet-version: '8.0.x'
 
-      - name: Restore + build EXE
-        run: dotnet build src/Jaminator/Jaminator.csproj -c Release
+      - name: Restore + build everything
+        run: dotnet build Jaminator.sln -c Release
 
-      - name: Install WiX 5 + UI extension
+      - name: Install WiX 5 + UI + Util extensions
         run: |
           dotnet tool install --global wix --version 5.0.2
           wix extension add WixToolset.UI.wixext/5.0.2 --global
+          wix extension add WixToolset.Util.wixext/5.0.2 --global
 
       - name: Build MSI
         shell: pwsh
         run: ./installer/build.ps1
 
-      - name: Verify MSI
+      - name: Stage Jaminator-Setup.exe
         shell: pwsh
         run: |
-          $msi = "build/Jaminator.msi"
-          if (-not (Test-Path $msi)) { throw "MSI not built" }
-          $size = (Get-Item $msi).Length
-          Write-Host "Built $msi ($([math]::Round($size/1KB)) KB)"
+          Copy-Item bootstrap/bin/Release/net48/Jaminator-Setup.exe build/Jaminator-Setup.exe -Force
+          Get-Item build/* | Select-Object Name, @{n='KB';e={[int]($_.Length/1KB)}}
+
+      - name: Verify artefacts
+        shell: pwsh
+        run: |
+          foreach ($f in 'build/Jaminator.msi','build/Jaminator-Setup.exe') {
+            if (-not (Test-Path $f)) { throw "$f not built" }
+            $size = (Get-Item $f).Length
+            Write-Host "Built $f ($([math]::Round($size/1KB)) KB)"
+          }
 
       - name: Create / update GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           name: Jaminator ${{ github.ref_name }}
           generate_release_notes: true
-          files: build/Jaminator.msi
+          files: |
+            build/Jaminator.msi
+            build/Jaminator-Setup.exe
           fail_on_unmatched_files: true

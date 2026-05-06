@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
 using Jaminator.Models;
@@ -11,6 +12,28 @@ namespace Jaminator.UI
 {
     internal sealed partial class MainForm : Form
     {
+        [DllImport("user32.dll")]
+        [return: MarshalAs(UnmanagedType.Bool)]
+        private static extern bool SetForegroundWindow(IntPtr hWnd);
+
+        protected override void OnShown(EventArgs e)
+        {
+            base.OnShown(e);
+            // When MSI's "Open Jaminator now" finish-checkbox launches us, the
+            // window opens behind whatever the user was looking at. Bring it
+            // to the foreground explicitly. Skipped in login-mode where the
+            // form is intentionally hidden.
+            if (Program.LoginModeOnly) return;
+            try
+            {
+                if (WindowState == FormWindowState.Minimized) WindowState = FormWindowState.Normal;
+                Activate();
+                BringToFront();
+                SetForegroundWindow(Handle);
+            }
+            catch { /* foreground-grab can fail under specific OS policies; non-fatal */ }
+        }
+
         // Sections that the scheduled task runs at every user logon. Everything
         // else is manual — only fires when the tech clicks. Anything missing
         // here is treated as "manual / disruptive" and goes in the bottom group.
@@ -356,13 +379,26 @@ namespace Jaminator.UI
         private void OnUninstallClick(object? sender, EventArgs e)
         {
             var ans = MessageBox.Show(
-                $"Uninstall Jaminator from {Installer.InstallDir}?\n\n" +
-                "Removes the scheduled task and Start Menu shortcut. Logs in C:\\ProgramData\\Jaminator\\ are kept.",
+                "Uninstall Jaminator?\n\n" +
+                "This launches the standard Windows Installer uninstaller and exits Jaminator " +
+                "immediately so it can finish cleanly. Logs in C:\\ProgramData\\Jaminator\\ are kept.",
                 "Uninstall Jaminator",
                 MessageBoxButtons.YesNo, MessageBoxIcon.Warning);
             if (ans != DialogResult.Yes) return;
 
             _uninstallButton.Enabled = false;
+
+            // Prefer the proper MSI uninstall — it handles ARP, scheduled task,
+            // shortcuts, install dir, all under the Windows Installer state machine.
+            if (Installer.LaunchMsiUninstall(_log))
+            {
+                Application.Exit();
+                return;
+            }
+
+            // Fallback: legacy self-installer flow (for old --install deployments
+            // that pre-date the MSI).
+            _log.Warn("No MSI ProductCode found — falling back to legacy uninstall");
             _ = Task.Run(() =>
             {
                 var rc = Installer.Uninstall(_log);
@@ -370,12 +406,7 @@ namespace Jaminator.UI
                 {
                     _uninstallButton.Enabled = true;
                     UpdateHeaderButtonsVisibility();
-                    if (rc == 0)
-                    {
-                        MessageBox.Show("Uninstalled. Closing.", "Done",
-                                        MessageBoxButtons.OK, MessageBoxIcon.Information);
-                        Application.Exit();
-                    }
+                    if (rc == 0) Application.Exit();
                 }));
             });
         }

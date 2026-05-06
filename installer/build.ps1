@@ -37,14 +37,12 @@ try {
     $msi = "$outDir\Jaminator.msi"
     if (Test-Path $msi) { Remove-Item $msi -Force }
 
-    # Ensure the WixUI extension is installed (no-op if already there)
-    & wix extension add WixToolset.UI.wixext --global 2>&1 | Out-Null
-
     & wix build "$repoRoot\installer\installer.wxs" `
         -d "Version=$version" `
         -d "SourceDir=$binDir" `
         -bindpath "$repoRoot\installer" `
         -ext WixToolset.UI.wixext `
+        -ext WixToolset.Util.wixext `
         -arch x64 `
         -o $msi
     if ($LASTEXITCODE -ne 0) { throw "wix build failed" }

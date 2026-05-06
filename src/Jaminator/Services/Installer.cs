@@ -2,6 +2,7 @@ using System;
 using System.Diagnostics;
 using System.IO;
 using System.Threading;
+using Microsoft.Win32;
 
 namespace Jaminator.Services
 {
@@ -63,6 +64,56 @@ namespace Jaminator.Services
                 log.Error("Install failed", ex);
                 return 1;
             }
+        }
+
+        /// <summary>
+        /// Walks the Add/Remove Programs registry and returns the MSI ProductCode
+        /// of the installed Jaminator (if any). Lets the UI hand off to the real
+        /// Windows Installer for uninstall instead of doing its own filesystem ops.
+        /// </summary>
+        public static string? FindMsiProductCode(string displayName = "Jaminator")
+        {
+            var roots = new[]
+            {
+                @"SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall",
+                @"SOFTWARE\WOW6432Node\Microsoft\Windows\CurrentVersion\Uninstall"
+            };
+            foreach (var root in roots)
+            {
+                using var key = Registry.LocalMachine.OpenSubKey(root);
+                if (key == null) continue;
+                foreach (var subName in key.GetSubKeyNames())
+                {
+                    using var sub = key.OpenSubKey(subName);
+                    if (sub == null) continue;
+                    var name = sub.GetValue("DisplayName") as string;
+                    if (string.Equals(name, displayName, StringComparison.OrdinalIgnoreCase) &&
+                        subName.StartsWith("{") && subName.EndsWith("}"))
+                    {
+                        return subName;
+                    }
+                }
+            }
+            return null;
+        }
+
+        /// <summary>
+        /// Launches msiexec /x against the installed Jaminator MSI. The current
+        /// process should exit immediately afterwards so msiexec can replace and
+        /// delete files (we are running from inside the install directory).
+        /// </summary>
+        public static bool LaunchMsiUninstall(Logger log)
+        {
+            var productCode = FindMsiProductCode();
+            if (productCode == null) return false;
+
+            var psi = new ProcessStartInfo("msiexec.exe", $"/x {productCode} /qb")
+            {
+                UseShellExecute = true
+            };
+            Process.Start(psi);
+            log.Info($"Handed off to msiexec /x {productCode} — exiting Jaminator now");
+            return true;
         }
 
         public static int Uninstall(Logger log)
