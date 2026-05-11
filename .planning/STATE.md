@@ -1,13 +1,12 @@
 ---
 gsd_state_version: 1.0
-milestone: v0.7.5
-milestone_name: "**Goal**: v0.7.5 is published as a tagged GitHub Release with the MSI attached and release notes that explain the bug, the fix, and the silent-install workaround for users still stuck on v0.7.4."
-status: executing
-stopped_at: Phase 1 planned (4 plans, 3 waves) — ready for execution
-last_updated: "2026-05-11T12:14:30.054Z"
-last_activity: 2026-05-11 -- Phase 01 execution started
+milestone: v0.8.0
+milestone_name: Wi-Fi password auto-deployment
+status: planning
+last_updated: "2026-05-11T13:24:44.037Z"
+last_activity: 2026-05-11
 progress:
-  total_phases: 1
+  total_phases: 0
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -25,12 +24,10 @@ See: .planning/PROJECT.md (updated 2026-05-11)
 
 ## Current Position
 
-Phase: 01 (Remove broken custom action and improve diagnostics) — EXECUTING
-Plan: 1 of 4
-Status: Executing Phase 01
-Last activity: 2026-05-11 -- Phase 01 execution started
-
-Progress: [░░░░░░░░░░] 0%
+Phase: Not started (defining requirements)
+Plan: —
+Status: Defining requirements
+Last activity: 2026-05-11 — Milestone v0.8.0 started
 
 ## Performance Metrics
 
