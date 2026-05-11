@@ -727,22 +727,27 @@ dotnet build Jaminator.sln          # must succeed
 | A5 | VS2022 reopening `Jaminator.sln` after the hand-edit produces no further file rewrites (i.e., the hand-edit is "clean from VS's perspective") | Pitfall P3 / E4 | Low — VS2022 only rewrites on user-initiated save or project-state change. Hand-edit produces a file VS would accept verbatim. |
 | A6 | The 4-commit boundary (D-11) maintains the "each commit independently builds" property | D-12 / Commit strategy | Low — commit 1 produces a buildable installer.wxs (the build.ps1 still passes `-d UpdateCheckCaDll=...` referring to the still-present DLL, since commit 2 hasn't run yet). Commits 2-3 then synchronously remove the project + arg. Commit 4 touches only EXE-side code. The build chain is consistent at each commit. |
 
-## Open Questions
+## Open Questions (RESOLVED)
+
+All three open questions were resolved during planning (Phase 1 plans 01-01 through 01-04). Resolutions recorded inline below.
 
 1. **Are there other `RunSchTasks` callers that need the deadlock fix backported?**
    - What we know: `RunSchTasks` is called from `RegisterScheduledTask` (line 204), `UnregisterScheduledTask` (lines 221-222), `ReconcileDailyTask` (line 245, 315). All five call sites benefit from the deadlock fix since they all wrap schtasks.exe.
    - What's unclear: Should the diagnostic-log emission (E3) be generalized to a helper invoked from all five sites, or kept inline in `RegisterScheduledTask` only?
    - Recommendation: Phase 1 fixes `RunSchTasks` for all five callers (deadlock-safe is a free correctness win). But TEMP-log emission stays inline in `RegisterScheduledTask` only — the failure modes for `UnregisterScheduledTask` (silent during uninstall) and `ReconcileDailyTask` (called every logon, would spam TEMP) don't have the same "vanishes into MSI rollback" problem. CONTEXT.md D-08 discretion ("either is fine") supports this scoping; planner should commit to it explicitly.
+   - **RESOLVED:** Deadlock fix in `RunSchTasks` applies universally (all five call sites benefit — free correctness win). `WriteRegisterTaskDiagnosticLog` TEMP-log emission is scoped to `RegisterScheduledTask` only. Implemented in Plan 01-04 Tasks 1-2.
 
 2. **Should the diagnostic log also be written when `UnregisterScheduledTask` fails?**
    - What we know: `UnregisterScheduledTask` is invoked by the `UnregisterTask` CA with `Return="ignore"` (installer.wxs:162). Failures don't roll back the uninstall.
    - What's unclear: Is a TEMP-log for uninstall failures useful enough to add?
    - Recommendation: **No — out of scope for Phase 1.** D-08 mandates we preserve existing semantics; `Return="ignore"` means uninstall failures are silent by design. If the user wants this in a future milestone (the "generalized install-time diagnostics" entry in Deferred Ideas for future milestones), it's a separate decision.
+   - **RESOLVED:** No — out of scope for Phase 1. `UnregisterScheduledTask` retains its existing silent-failure behavior. The `Return="ignore"` semantics on the `UnregisterTask` CA are preserved by D-08. Generalised diagnostics across all entry points stays a Milestone 3 candidate (CONTEXT.md Deferred Ideas).
 
 3. **Does `Program.cs --register-task` have stdout/stderr connection back to the calling MSI session in a deferred CA?**
    - What we know: `installer.wxs` line 150-155 uses `FileRef="JaminatorExeFile"` with `ExeCommand="--register-task"`, no `Output` attribute. The Windows Installer documentation states that deferred FileRef CAs do capture child-process stdout/stderr to the MSI session log when running with `/l*v` logging.
    - What's unclear: Is this capture reliable on all Windows versions in the fleet (Win10 + Win11)?
    - Recommendation: Phase 2 smoke-test (INSTALL-01, INSTALL-02) will validate this empirically by intentionally triggering a `RegisterTask` failure on the test box and inspecting the verbose log. **Phase 1 implements the `Console.WriteLine` channel on the assumption that it works** (matches existing pattern at `Program.cs:37`), and Phase 2 validates. If Phase 2 finds the channel broken, the TEMP-log is the fallback — diagnostics survive either way.
+   - **RESOLVED:** Phase 1 implements `Console.WriteLine` on the working-channel assumption (consistent with existing pattern in `Program.cs:37`). The TEMP-log written by `WriteRegisterTaskDiagnosticLog` is the unconditional fallback — discoverable by the install-initiating user regardless of whether the stdout-to-MSI-log channel works. Phase 2 smoke-test (INSTALL-01/02) validates the channel empirically; if Phase 2 finds it broken, no Phase 1 rework is needed because the TEMP-log already covers the diagnostic need.
 
 ## Security Domain
 
