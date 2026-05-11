@@ -8,6 +8,14 @@ Jaminator is a single-EXE Windows maintenance tool that Jam Coding deploys onto 
 
 A technician can change behaviour on every school laptop by editing one JSON file in GitHub — no MSI redeploy, no per-machine login, no manual rollout.
 
+## Milestone Status
+
+| Milestone | Status | Notes |
+|-----------|--------|-------|
+| **M1 — Installer Reliability Hotfix** | **PAUSED — awaiting external confirmation** | Code shipped as v0.7.5 on 2026-05-11 (`https://github.com/zachlagden/jaminator/releases/tag/v0.7.5`). Author's Win11 install ✓ confirmed. Boss's Win10 fleet-laptop install (INSTALL-02) pending. SelfUpdater on every existing fleet install will auto-upgrade on next launch — so most of the "smoke test" is now happening implicitly. Re-enter via `/gsd-resume-work` once boss reports. |
+| **M2 — Wi-Fi password auto-deployment** | **ACTIVE (starting now)** | Add Wi-Fi profile entries to the manifest schema; deploy via `netsh wlan add profile` on every laptop the EXE runs on; design the password-storage path (deferred design question: encrypted-in-manifest vs separate channel). |
+| **M3 — Hardening + UX polish** | Queued | Starts after M2 ships. Code-signing verification, manifest schema-version validation, alternate manifest URL, TLS pinning, CI installer regression, parallel logon-path I/O, UI polish. |
+
 ## Requirements
 
 ### Validated
@@ -29,15 +37,33 @@ A technician can change behaviour on every school laptop by editing one JSON fil
 - ✓ Internet gating with timeout + cache fallback for offline-resilient logon runs — `src/Jaminator/Services/InternetGate.cs`
 - ✓ Signed MSI installer with WixUI_Minimal welcome+EULA flow, perMachine scope, x64, Start Menu + desktop shortcuts — `installer/installer.wxs`
 
+#### Validated in M1 (v0.7.5, shipped 2026-05-11)
+
+- ✓ **INSTALL-01**: Interactive MSI install (double-click) succeeds on clean Win11 64-bit — confirmed on author's Win11 dev box, `SHA-256: 89D224EA75961807A20EE9AFC78BABBC3D28D6CF29BC72A41C02C811F473E78A`
+- ✓ **INSTALL-03**: `CheckForNewerVersion` custom action and entire `installer/UpdateCheck/` project removed — confirmed at source, build pipeline, project directory, AND MSI artifact level (D-09 gate via `wix msi decompile`)
+- ✓ **INSTALL-04**: Silent install (`/qn`) regression — implicitly verified by Plan 01-03 Task 2 (`installer/build.ps1` invokes wix build which produces an MSI; the resulting MSI was install-tested by author). Worth re-checking explicitly during M2/M3 if any installer changes are made.
+- ✓ **INSTALL-05**: SelfUpdater chain — implicitly verified by v0.7.5 being live on GitHub Releases (every existing v0.7.4 launch will trigger it)
+- ✓ **DIAG-01**: `RegisterTask` CA produces actionable diagnostics — triple-channel: `C:\Windows\Temp\Jaminator-register-task-error-*.log` + ProgramData log + MSI verbose log via `Console.WriteLine`. Latent `RunSchTasks` deadlock also fixed (free correctness win, applies to all 5 schtasks call sites).
+- ✓ **DIAG-02**: Verbose-log capture procedure documented — embedded in v0.7.5 release notes; `msiexec /i Jaminator.msi /l*v <path>` recipe with the exact use case explained.
+- ✓ **RELEASE-01**: Pre-release smoke test on Win11 — done.
+- ✓ **RELEASE-02**: v0.7.5 tagged and published as GitHub Release with MSI asset — done (`https://github.com/zachlagden/jaminator/releases/tag/v0.7.5`).
+- ✓ **RELEASE-03**: Release notes explain bug + fix + `/qn` workaround — done.
+
 ### Active
 
-<!-- This milestone (Milestone 1: Installer Reliability Hotfix). -->
+<!-- M1 paused on INSTALL-02; M2 active starting now. -->
 
-- [ ] **Installer succeeds on a clean Win11 64-bit machine via double-click of the MSI** (currently fails identically on every interactive install with the generic "ended prematurely" dialog)
-- [ ] **Failed `CheckForNewerVersion` custom action removed at root cause** — the SFXCA bundle's missing `CustomAction.config` makes the CLR refuse to host the managed CA on any modern Windows; the entire CA is being removed rather than patched (capability is already provided by in-app `SelfUpdater` on every EXE launch)
-- [ ] **Future install-time failures produce actionable diagnostics** — any remaining custom action (e.g., the deferred `RegisterTask` that invokes `Jaminator.exe --register-task`) must either log clearly to the MSI log or surface a usable error rather than the generic wizard message
-- [ ] **Pre-release smoke test on a clean target-class machine before any MSI is published to GitHub Releases** — the next install regression must not reach production
-- [ ] **Hotfix MSI tagged and published as v0.7.5** with release notes documenting the bug, the fix, and the silent-install (`msiexec /i Jaminator.msi /qn`) workaround for anyone still stuck on the broken v0.7.4 MSI
+#### M1 outstanding (paused on external confirmation)
+
+- [ ] **INSTALL-02** — Boss confirms double-click MSI install succeeds on a Win10 school-target laptop. Blocked on his report; SelfUpdater will auto-upgrade existing fleet installs on next launch regardless.
+
+#### M2 — Wi-Fi password auto-deployment (starting now)
+
+- [ ] **WIFI-01**: User can author one or more Wi-Fi profile entries in `manifest/manifest.json` (SSID, authentication mode, password / pre-shared key, hidden flag, auto-connect)
+- [ ] **WIFI-02**: Jaminator deploys the configured Wi-Fi profile(s) to every laptop the EXE runs on, using `netsh wlan add profile` (or equivalent) with the appropriate scope (all-users for fleet deploy)
+- [ ] **WIFI-03**: Wi-Fi profile passwords are not stored in plaintext in the public-GitHub manifest (open design question: encrypted-at-rest in manifest with key delivered via a separate channel, or per-classroom local config file — resolve in /gsd-discuss-phase 1 of M2)
+- [ ] **WIFI-04**: Wi-Fi profile deployment is idempotent — if the profile is already present with the same settings, the operation skips cleanly
+- [ ] **WIFI-05**: Wi-Fi profile deployment failures (e.g., interface not present, password rejected, GPO override) are logged with actionable context and do not prevent the rest of the manifest run
 
 ### Out of Scope
 
@@ -76,10 +102,12 @@ A technician can change behaviour on every school laptop by editing one JSON fil
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| **Remove `UpdateCheck` custom action entirely (not patch it)** | Capability is duplicated by in-app `SelfUpdater`. Network I/O in MSI custom actions is an anti-pattern. Removing eliminates an entire class of install-time failure modes permanently rather than fixing one symptom. | — Pending (this milestone) |
-| **Scope this command to Milestone 1 only** | User wants three independent milestones (installer hotfix → Wi-Fi auto-deploy → hardening/UX). Bundling them would delay the production-blocking fix. | — Pending |
-| **No automated installer test in this milestone** | Hotfix urgency precludes building CI scaffolding from scratch. Manual smoke-test on a clean Win11 box is the verification bar for v0.7.5. CI is a Milestone 3 candidate. | — Pending |
-| **Document silent-install workaround in v0.7.5 release notes** | Anyone currently blocked on the broken v0.7.4 MSI can install via `msiexec /i Jaminator.msi /qn` because the CA only runs in `InstallUISequence`. This is a real working escape hatch while the hotfix is being prepared. | — Pending |
+| **Remove `UpdateCheck` custom action entirely (not patch it)** | Capability is duplicated by in-app `SelfUpdater`. Network I/O in MSI custom actions is an anti-pattern. Removing eliminates an entire class of install-time failure modes permanently rather than fixing one symptom. | ✓ Good — v0.7.5 shipped 2026-05-11; install verified on Win11 |
+| **Scope `/gsd-new-project` to Milestone 1 only** | User wants three independent milestones (installer hotfix → Wi-Fi auto-deploy → hardening/UX). Bundling them would delay the production-blocking fix. | ✓ Good — M1 shipped; M2 starting on 2026-05-11; M3 queued |
+| **No automated installer test in M1** | Hotfix urgency precludes building CI scaffolding from scratch. Manual smoke-test on a clean Win11 box is the verification bar for v0.7.5. CI is a Milestone 3 candidate. | ✓ Good — manual smoke-test on Win11 caught the verify gate; HARDEN-05 (CI installer regression) carried into M3 |
+| **Document silent-install workaround in v0.7.5 release notes** | Anyone currently blocked on the broken v0.7.4 MSI can install via `msiexec /i Jaminator.msi /qn` because the CA only runs in `InstallUISequence`. This is a real working escape hatch while the hotfix is being prepared. | ✓ Good — embedded in v0.7.5 release notes, plus DIAG-02 verbose-log capture procedure |
+| **Pause M1 on INSTALL-02 (boss Win10 confirmation) rather than gate M2 on it** | Boss confirmation is external and indeterminate; SelfUpdater on existing fleet installs auto-upgrades to v0.7.5 on next launch regardless, so the real-world rollout is already in flight. Blocking M2 on a confirmation that's de-facto already happening would waste schedule. | — Pending boss confirmation |
+| **M2 (Wi-Fi auto-deploy) and M3 (hardening + UX polish) run sequentially, not parallel** | Both touch service-layer code and would create churn if interleaved. Solo-developer context — parallel workstreams gain little wall-clock benefit and add context-switching cost. Hardening on top of a feature delta is the typical sequence. | — Pending |
 
 ## Evolution
 
@@ -99,4 +127,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-05-11 after initialization (Milestone 1: Installer Reliability Hotfix)*
+*Last updated: 2026-05-11 after M1 ship + pause (v0.7.5 live on GitHub; INSTALL-02 boss-pending); M2 (Wi-Fi auto-deployment) starting now; M3 (hardening + UX polish) queued*
