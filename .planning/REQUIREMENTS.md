@@ -57,21 +57,22 @@ Explicitly excluded from Milestone 2. Documented to prevent scope creep.
 
 ## Traceability
 
-Which phases cover which requirements. Filled by the roadmapper.
+Which phases cover which requirements.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| WIFI-01 | TBD | Pending |
-| WIFI-02 | TBD | Pending |
-| WIFI-03 | TBD | Pending |
-| WIFI-04 | TBD | Pending |
-| WIFI-05 | TBD | Pending |
+| WIFI-01 | Phase 2 — Private secrets channel + manifest schema | Pending |
+| WIFI-02 | Phase 3 — WifiProfileRunner + run-path integration | Pending |
+| WIFI-03 | Phase 2 — Private secrets channel + manifest schema | Pending |
+| WIFI-04 | Phase 4 — Idempotency, failure isolation, smoke test | Pending |
+| WIFI-05 | Phase 3 (partial) + Phase 4 (full discipline) | Pending |
 
 **Coverage:**
 - v1 requirements: 5 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 5 ⚠️ (will be resolved by roadmapper)
+- Mapped to phases: 5 ✓
+- Unmapped: 0
+- Phase 5 (ship v0.8.0) carries no v1 WIFI-* directly; it ships the work the WIFI-* phases produced.
 
 ---
 *Requirements defined: 2026-05-11*
-*Last updated: 2026-05-11 after WIFI-03 design lock (private manifest repo + PAT-in-MSI) — pre-roadmap*
+*Last updated: 2026-05-11 after roadmap creation — 5 WIFI requirements mapped across Phases 2–4; Phase 5 is the release phase*
