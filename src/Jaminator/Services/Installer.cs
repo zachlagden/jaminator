@@ -148,6 +148,7 @@ namespace Jaminator.Services
 
         public static int RegisterScheduledTask(Logger log)
         {
+            string? xmlPath = null;
             try
             {
                 var xml = $@"<?xml version=""1.0"" encoding=""UTF-16""?>
@@ -196,21 +197,78 @@ namespace Jaminator.Services
   </Actions>
 </Task>";
 
-                var xmlPath = Path.Combine(Path.GetTempPath(), $"jaminator-task-{Guid.NewGuid():N}.xml");
+                xmlPath = Path.Combine(Path.GetTempPath(), $"jaminator-task-{Guid.NewGuid():N}.xml");
                 File.WriteAllText(xmlPath, xml, System.Text.Encoding.Unicode);
 
                 try
                 {
                     RunSchTasks($"/Create /TN \"{TaskName}\" /XML \"{xmlPath}\" /F");
                     log.Info("Scheduled task registered: " + TaskName);
+                    // Delete the task XML on success only (NOT in finally — failure path preserves it).
+                    try { File.Delete(xmlPath); } catch { }
+                    xmlPath = null;
                     return 0;
                 }
-                finally { try { File.Delete(xmlPath); } catch { } }
+                catch
+                {
+                    // Preserve the XML for diagnostics; don't delete it. Re-throw to outer catch.
+                    throw;
+                }
             }
             catch (Exception ex)
             {
                 log.Error("Failed to register scheduled task", ex);
+                WriteRegisterTaskDiagnosticLog(ex, xmlPath);
                 return 1;
+            }
+        }
+
+        private static void WriteRegisterTaskDiagnosticLog(Exception ex, string? preservedXmlPath)
+        {
+            try
+            {
+                var timestamp = DateTime.Now.ToString("yyyyMMddHHmmss");
+                var path = Path.Combine(Path.GetTempPath(),
+                    $"Jaminator-register-task-error-{timestamp}.log");
+
+                var sb = new System.Text.StringBuilder();
+                sb.AppendLine("Jaminator --register-task diagnostic log");
+                sb.AppendLine($"Generated: {DateTime.Now:yyyy-MM-ddTHH:mm:ss} local");
+                sb.AppendLine("Run mode: --register-task");
+                sb.AppendLine($"Tool version: {Jaminator.Program.ToolVersion}");
+                sb.AppendLine();
+                sb.AppendLine("--- Exception ---");
+                sb.AppendLine($"Type: {ex.GetType().FullName}");
+                sb.AppendLine($"Message: {ex.Message}");
+                sb.AppendLine("Stack trace:");
+                sb.AppendLine(ex.StackTrace ?? "(no stack)");
+                sb.AppendLine();
+
+                if (ex is SchTasksException sch)
+                {
+                    sb.AppendLine("--- Captured schtasks.exe output ---");
+                    sb.AppendLine($"Command line: {sch.CommandLine}");
+                    sb.AppendLine($"Exit code: {sch.ExitCode}");
+                    sb.AppendLine("STDOUT:");
+                    sb.AppendLine(sch.Stdout);
+                    sb.AppendLine("STDERR:");
+                    sb.AppendLine(sch.Stderr);
+                    sb.AppendLine();
+                }
+
+                if (preservedXmlPath != null && File.Exists(preservedXmlPath))
+                {
+                    sb.AppendLine("--- Failing task XML ---");
+                    sb.AppendLine($"Preserved at: {preservedXmlPath}");
+                    sb.AppendLine("(deleted on success; preserved on failure for diagnostics)");
+                }
+
+                File.WriteAllText(path, sb.ToString(), System.Text.Encoding.UTF8);
+                Console.WriteLine($"Diagnostic log written: {path}");  // surfaces in MSI verbose log
+            }
+            catch
+            {
+                // Never let diagnostic-log writing fail the diagnostics path itself.
             }
         }
 
@@ -391,14 +449,32 @@ namespace Jaminator.Services
                 UseShellExecute = false,
                 CreateNoWindow = true,
                 RedirectStandardOutput = true,
-                RedirectStandardError = true
+                RedirectStandardError = true,
             };
             using var p = Process.Start(psi)!;
-            var stdout = p.StandardOutput.ReadToEnd();
-            var stderr = p.StandardError.ReadToEnd();
+
+            // Drain stderr asynchronously so we can drain stdout synchronously
+            // without risking a pipe-buffer deadlock. See:
+            // learn.microsoft.com/dotnet/api/system.diagnostics.processstartinfo.redirectstandardoutput
+            var stderrBuf = new System.Text.StringBuilder();
+            p.ErrorDataReceived += (s, e) =>
+            {
+                if (e.Data != null) stderrBuf.AppendLine(e.Data);
+            };
+            p.BeginErrorReadLine();
+
+            string stdout = p.StandardOutput.ReadToEnd();
             p.WaitForExit();
+            string stderr = stderrBuf.ToString();
+
             if (p.ExitCode != 0 && !allowFailure)
-                throw new Exception($"schtasks {args} exit {p.ExitCode}: {stderr.Trim()} {stdout.Trim()}");
+            {
+                throw new SchTasksException(
+                    commandLine: $"schtasks.exe {args}",
+                    exitCode: p.ExitCode,
+                    stdout: stdout,
+                    stderr: stderr);
+            }
         }
 
         private static void CopyWithRetry(string src, string dst, Logger log)
@@ -428,6 +504,23 @@ Remove-Item -LiteralPath '{dir}' -Recurse -Force
             { UseShellExecute = true });
 
             log.Info("Install dir delete scheduled (after exit)");
+        }
+    }
+
+    internal sealed class SchTasksException : Exception
+    {
+        public string CommandLine { get; }
+        public int ExitCode { get; }
+        public string Stdout { get; }
+        public string Stderr { get; }
+
+        public SchTasksException(string commandLine, int exitCode, string stdout, string stderr)
+            : base($"{commandLine} exit {exitCode}: {(string.IsNullOrWhiteSpace(stderr) ? stdout : stderr).Trim()}")
+        {
+            CommandLine = commandLine;
+            ExitCode = exitCode;
+            Stdout = stdout ?? "";
+            Stderr = stderr ?? "";
         }
     }
 }
