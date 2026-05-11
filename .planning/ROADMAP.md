@@ -30,12 +30,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   2. The `installer/UpdateCheck/` project is removed from `Jaminator.sln` and from `installer/build.ps1` (the `$caDll` reference and the `-d UpdateCheckCaDll=...` argument no longer exist)
   3. `installer/build.ps1` runs to completion on Windows and produces a `build/Jaminator.msi` file
   4. The `RegisterTask` deferred CA wraps its `Jaminator.exe --register-task` invocation with logging that surfaces stderr/exit-code context in the MSI verbose log on failure (no more silent return-value-3-with-no-context)
-**Plans:** 4 plans
+**Plans:** 2/4 plans executed
 Plans:
-- [ ] 01-01-PLAN.md — Remove CheckForNewerVersion CA from installer.wxs (WiX source surgery; INSTALL-03)
+- [x] 01-01-PLAN.md — Remove CheckForNewerVersion CA from installer.wxs (WiX source surgery; INSTALL-03)
 - [ ] 01-02-PLAN.md — Remove UpdateCheck project from Jaminator.sln and installer/build.ps1 (build pipeline cleanup; INSTALL-03)
 - [ ] 01-03-PLAN.md — Delete installer/UpdateCheck/ + Windows-side lessmsi artifact verification (INSTALL-03 gate)
-- [ ] 01-04-PLAN.md — Deadlock-safe RunSchTasks + TEMP-log diagnostics from RegisterScheduledTask catch (DIAG-01)
+- [x] 01-04-PLAN.md — Deadlock-safe RunSchTasks + TEMP-log diagnostics from RegisterScheduledTask catch (DIAG-01)
 
 ### Phase 2: Smoke-test the rebuilt MSI and document log capture
 **Goal**: The rebuilt MSI is proven to install end-to-end on the canonical target environments via every entry path, and a documented procedure exists for capturing a verbose log when future failures are reported.
@@ -69,6 +69,6 @@ Phases execute in numeric order: 1 → 2 → 3
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Remove broken CA and improve diagnostics | 0/4 | Not started | - |
+| 1. Remove broken CA and improve diagnostics | 2/4 | In Progress|  |
 | 2. Smoke-test and document log capture | 0/TBD | Not started | - |
 | 3. Tag and ship v0.7.5 | 0/TBD | Not started | - |

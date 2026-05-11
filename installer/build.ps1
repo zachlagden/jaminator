@@ -24,14 +24,12 @@ try {
     if (($version -split '\.').Count -lt 4) { $version = "$version.0" }  # MSI wants 4 parts
     Write-Host "Building Jaminator MSI v$version"
 
-    # Ensure EXE + UpdateCheck CA are built
+    # Ensure EXE is built
     $binDir = "$repoRoot\src\Jaminator\bin\$Configuration\net48"
-    $caDll = "$repoRoot\installer\UpdateCheck\bin\$Configuration\net48\UpdateCheckCA.CA.dll"
-    if (-not (Test-Path "$binDir\Jaminator.exe") -or -not (Test-Path $caDll)) {
+    if (-not (Test-Path "$binDir\Jaminator.exe")) {
         Write-Host "Building solution..."
         dotnet build "$repoRoot\Jaminator.sln" -c $Configuration | Out-Host
     }
-    if (-not (Test-Path $caDll)) { throw "UpdateCheckCA.CA.dll not produced — DTF packaging failed" }
 
     # Build MSI
     $outDir = "$repoRoot\build"
@@ -42,7 +40,6 @@ try {
     & wix build "$repoRoot\installer\installer.wxs" `
         -d "Version=$version" `
         -d "SourceDir=$binDir" `
-        -d "UpdateCheckCaDll=$caDll" `
         -bindpath "$repoRoot\installer" `
         -ext WixToolset.UI.wixext `
         -ext WixToolset.Util.wixext `
