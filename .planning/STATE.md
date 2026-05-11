@@ -1,3 +1,19 @@
+---
+gsd_state_version: 1.0
+milestone: v0.7.5
+milestone_name: "**Goal**: v0.7.5 is published as a tagged GitHub Release with the MSI attached and release notes that explain the bug, the fix, and the silent-install workaround for users still stuck on v0.7.4."
+status: planning
+stopped_at: Phase 1 context gathered
+last_updated: "2026-05-11T11:38:16.820Z"
+last_activity: 2026-05-11 — Roadmap created for Milestone 1 (Installer Reliability Hotfix)
+progress:
+  total_phases: 3
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
+---
+
 # Project State
 
 ## Project Reference
@@ -19,6 +35,7 @@ Progress: [░░░░░░░░░░] 0%
 ## Performance Metrics
 
 **Velocity:**
+
 - Total plans completed: 0
 - Average duration: —
 - Total execution time: 0.0 hours
@@ -30,6 +47,7 @@ Progress: [░░░░░░░░░░] 0%
 | - | - | - | - |
 
 **Recent Trend:**
+
 - Last 5 plans: —
 - Trend: —
 
@@ -65,6 +83,6 @@ Items acknowledged and carried forward from previous milestone close:
 
 ## Session Continuity
 
-Last session: 2026-05-11
-Stopped at: Roadmap and STATE.md created; ready for `/gsd-plan-phase 1`
-Resume file: None
+Last session: 2026-05-11T11:38:16.807Z
+Stopped at: Phase 1 context gathered
+Resume file: .planning/phases/01-remove-broken-custom-action-and-improve-diagnostics/01-CONTEXT.md
