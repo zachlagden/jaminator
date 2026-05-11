@@ -63,26 +63,26 @@ Explicitly excluded from Milestone 1. Documented to prevent scope creep into the
 
 ## Traceability
 
-Which phases cover which requirements. Filled by the roadmapper.
+Which phases cover which requirements.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INSTALL-01 | TBD | Pending |
-| INSTALL-02 | TBD | Pending |
-| INSTALL-03 | TBD | Pending |
-| INSTALL-04 | TBD | Pending |
-| INSTALL-05 | TBD | Pending |
-| DIAG-01    | TBD | Pending |
-| DIAG-02    | TBD | Pending |
-| RELEASE-01 | TBD | Pending |
-| RELEASE-02 | TBD | Pending |
-| RELEASE-03 | TBD | Pending |
+| INSTALL-01 | Phase 2 | Pending |
+| INSTALL-02 | Phase 2 | Pending |
+| INSTALL-03 | Phase 1 | Pending |
+| INSTALL-04 | Phase 2 | Pending |
+| INSTALL-05 | Phase 2 | Pending |
+| DIAG-01    | Phase 1 | Pending |
+| DIAG-02    | Phase 2 | Pending |
+| RELEASE-01 | Phase 2 | Pending |
+| RELEASE-02 | Phase 3 | Pending |
+| RELEASE-03 | Phase 3 | Pending |
 
 **Coverage:**
 - v1 requirements: 10 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 10 ⚠️ (will be resolved by roadmapper)
+- Mapped to phases: 10 ✓
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-05-11*
-*Last updated: 2026-05-11 after initial definition*
+*Last updated: 2026-05-11 after roadmap creation — traceability table populated*
