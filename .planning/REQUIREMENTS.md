@@ -1,88 +1,77 @@
-# Requirements: Jaminator — Milestone 1 (Installer Reliability Hotfix)
+# Requirements: Jaminator — Milestone 2 (v0.8.0 — Wi-Fi password auto-deployment)
 
 **Defined:** 2026-05-11
+**Milestone version:** v0.8.0
 **Core Value:** A technician can change behaviour on every school laptop by editing one JSON file in GitHub — no MSI redeploy, no per-machine login, no manual rollout.
+
+**Milestone goal:** Extend the manifest-driven model to cover Wi-Fi profile deployment (including credentials), so adding or rotating a Wi-Fi network across the fleet is a single edit-and-push to the private manifest repo. **Hard constraint:** zero per-laptop touch after the initial MSI install — Jam Coding staff are not technicians.
 
 ## v1 Requirements
 
-Requirements for the v0.7.5 hotfix release. Each maps to roadmap phases.
+Requirements for the v0.8.0 release. Each maps to roadmap phases.
 
-### INSTALL — installer succeeds again
+### WIFI — Wi-Fi profile deployment
 
-- [ ] **INSTALL-01**: Installer succeeds via double-click of the MSI on a clean Windows 11 64-bit machine (currently fails with "ended prematurely")
-- [ ] **INSTALL-02**: Installer succeeds via double-click of the MSI on a Windows 10 fleet-target laptop (canonical school-classroom environment)
-- [ ] **INSTALL-03**: The `CheckForNewerVersion` custom action and the entire `installer/UpdateCheck/` project are removed from the MSI build — no managed-CA surface remains in the install path
-- [ ] **INSTALL-04**: Silent install (`msiexec /i Jaminator.msi /qn`) continues to succeed end-to-end (regression check: this is the existing escape hatch for the v0.7.4 break and must not be lost)
-- [ ] **INSTALL-05**: Self-update on EXE launch (`SelfUpdater.cs`) continues to work — including the case where a user installs an older MSI and `SelfUpdater` upgrades them on first launch (the capability that's replacing the removed install-time CA)
+- [ ] **WIFI-01**: Manifest schema additions — a new `wifi.profiles[]` array where each entry carries SSID, authentication mode (`WPA2PSK`, `WPA3PSK`, `open`), hidden flag, auto-connect flag, scope (`all-users` or `current-user`), and (in the **private** manifest only) the PSK. The schema is documented in `docs/manifest-schema.md` alongside the existing manifest entries.
 
-### DIAG — install-time diagnostics
+- [ ] **WIFI-02**: A new `WifiProfileRunner` service (`src/Jaminator/Services/WifiProfileRunner.cs`) deploys each manifest-declared Wi-Fi profile to the laptop via `netsh wlan add profile filename=<xml-path> user=<scope>`. The XML is built per-profile at runtime from a template (similar to how `Installer.cs::RegisterScheduledTask` builds the task XML). Runner is invoked from the run-all path AND the login-mode path (Wi-Fi access is login-safe — it doesn't disrupt a logged-in student).
 
-- [ ] **DIAG-01**: The remaining deferred custom action (`RegisterTask` — invokes `Jaminator.exe --register-task`) produces actionable output in the MSI log on any failure (no silent return-value-3-with-no-context), so future install regressions are diagnosable from the standard MSI verbose log
-- [ ] **DIAG-02**: A documented procedure exists for capturing a verbose MSI install log (`msiexec /i Jaminator.msi /l*v <path>`) — either in the README, the release notes, or a `docs/` page — so any future failure report can be triaged immediately from a log instead of a generic dialog screenshot
+- [ ] **WIFI-03**: Wi-Fi profile passwords are delivered to fleet laptops via a **private GitHub manifest repo** gated by a fine-grained read-only PAT bundled in the MSI. Public `manifest/manifest.json` continues to live in the public `zachlagden/jaminator` repo and carries only non-sensitive config (program installs, cleanup rules, wallpaper, folder structure, commands, schedule, WIFI metadata WITHOUT PSKs). The **private** repo (e.g., `jamcoding-internal/jaminator-secrets`) carries a separate `secrets.json` (or `manifest-secrets.json`) keyed by Wi-Fi SSID → PSK. `ManifestFetcher` is extended to fetch the private secrets file in addition to the public manifest, using the bundled PAT as a bearer token. PSKs are joined into the in-memory profile entries at runtime. *Threat model is operational, not cryptographic — see PROJECT.md Key Decisions for the full rationale.*
 
-### RELEASE — shipping the hotfix
+- [ ] **WIFI-04**: Wi-Fi profile deployment is idempotent — `WifiProfileRunner` checks the existing profile (via `netsh wlan show profile name=<SSID>`) against the manifest-declared profile; if identical (SSID, auth mode, PSK, hidden, auto-connect, scope), the profile is skipped with a clean log message. Different settings trigger a delete-then-add to rewrite. Adopts the same skip-if-installed pattern as `MsiInstaller`.
 
-- [ ] **RELEASE-01**: A pre-release smoke test of the rebuilt MSI is executed on a clean Windows 11 64-bit machine (and ideally one school-target Win10 laptop) before tagging v0.7.5 — install must complete via double-click, Jaminator must launch from the resulting Start Menu shortcut, and the scheduled task must be registered
-- [ ] **RELEASE-02**: Version bumped to v0.7.5 in `Program.cs::ToolVersion` (the single source of truth that `installer/build.ps1` reads); the rebuilt MSI is tagged as `v0.7.5` in git and a GitHub Release is created with the MSI attached as a downloadable asset
-- [ ] **RELEASE-03**: Release notes for v0.7.5 explain the bug (interactive MSI install was failing because of a missing `CustomAction.config` in the `UpdateCheckCA` bundle), the fix (removed the custom action; in-app `SelfUpdater` continues to handle update checks on EXE launch), and the silent-install workaround (`msiexec /i Jaminator.msi /qn`) for anyone still stuck on the broken v0.7.4 MSI
+- [ ] **WIFI-05**: Wi-Fi profile deployment failures (interface not present, PSK rejected by `netsh`, GPO override blocking write, profile XML invalid, scope rejected) are logged with actionable context (`Logger.Error` with full netsh stdout/stderr) and **do not abort** the rest of the run. Pattern matches the existing `CleanupRunner` and `CommandRunner` failure-isolation discipline. A new `Jaminator-wifi-error-YYYYMMDDhhmmss.log` is written to `%TEMP%` for the technician's diagnostic capture (same DIAG-01 pattern from M1).
 
 ## v2 Requirements
 
 Acknowledged but deferred to future milestones. Tracked here so they're not lost.
 
-### Milestone 2 candidates — Wi-Fi auto-deployment
-
-- **WIFI-01**: User can author one or more Wi-Fi profile entries in `manifest/manifest.json` (SSID, authentication mode, password / pre-shared key, hidden flag, auto-connect)
-- **WIFI-02**: Jaminator deploys the configured Wi-Fi profile(s) to every laptop the EXE runs on, using `netsh wlan add profile` (or equivalent) with the appropriate scope (all-users for fleet deploy)
-- **WIFI-03**: Wi-Fi profile passwords are not stored in plaintext in the public-GitHub manifest (deferred design question: encrypted-at-rest in manifest with key delivered via a separate channel, or per-classroom local config file)
-- **WIFI-04**: Wi-Fi profile deployment is idempotent — if the profile is already present with the same settings, the operation skips cleanly
-- **WIFI-05**: Wi-Fi profile deployment failures (e.g., interface not present, password rejected, GPO override) are logged with actionable context and do not prevent the rest of the manifest run
-
-### Milestone 3 candidates — hardening + UX polish
+### Milestone 3 candidates — Hardening + UX polish
 
 - **HARDEN-01**: Code-signing / Authenticode verification of downloaded third-party MSI/EXE installers before execution (currently SHA256-only — manifest compromise would let an attacker swap hashes and binaries together)
-- **HARDEN-02**: Manifest schema-version validation — reject manifests whose `schemaVersion` is newer than the tool understands, with a clear log message (currently fails silently to null fields)
+- **HARDEN-02**: Manifest schema-version validation — reject manifests whose `schemaVersion` is newer than the tool understands, with a clear log message (currently fails silently to null fields). High priority post-M2 because M2 adds new manifest fields.
 - **HARDEN-03**: Alternate manifest URL / fallback host — eliminate the single-point-of-failure on `raw.githubusercontent.com`
 - **HARDEN-04**: TLS certificate pinning for `github.com` API endpoints, or at minimum structured logging of HTTPS failures to detect MITM
 - **HARDEN-05**: CI / smoke-test automation for installer regressions — automated install on a clean Windows VM as part of every release
-- **HARDEN-06**: Parallel logon-path I/O (manifest + wallpaper fetched concurrently) to reduce student-visible wait at logon
+- **HARDEN-06**: Parallel logon-path I/O (manifest + secrets manifest + wallpaper fetched concurrently) to reduce student-visible wait at logon. Especially relevant post-M2 because we add a second network fetch per run.
+- **HARDEN-07** (new from M2): **Automate the PAT-rotation + MSI-rebuild pipeline**. Termly rotation of the embedded PAT requires manual MSI rebuild + release today. A small CI workflow that triggers on a `secrets-rotation/` repo event would do it autonomously and shrink the rotation window.
 - **UX-01**: UX/UI polish across the WinForms section panels and progress display (described as "light" — code and UI already look decent)
+
+## M1 carry-forward
+
+- **INSTALL-02** (from M1, v0.7.5): Boss confirms double-click MSI install succeeds on a Win10 school-target laptop. *Not in M2 scope — tracked separately as the gate to formally close out M1. SelfUpdater on every existing fleet install will auto-upgrade to v0.7.5 on next launch, so this is real-world-implicitly happening regardless of explicit boss confirmation.*
 
 ## Out of Scope
 
-Explicitly excluded from Milestone 1. Documented to prevent scope creep into the hotfix.
+Explicitly excluded from Milestone 2. Documented to prevent scope creep.
 
 | Feature | Reason |
 |---------|--------|
-| Wi-Fi password auto-deployment | Planned as **Milestone 2** — out of scope here to keep this hotfix focused on a working MSI |
-| Hardening pass + UX/UI polish | Planned as **Milestone 3** — described as "light"; deferred for the same reason |
-| Install-time "newer version available" prompt | Architecturally removed in this milestone — capability is duplicated by `SelfUpdater.cs` on every EXE launch, and MSI custom actions doing network I/O is a known anti-pattern that just opened a class of failure modes |
-| Patching `UpdateCheckCA` with a `CustomAction.config` to keep the install-time update flow | Considered and rejected — `SelfUpdater` already covers the capability and removing the CA permanently eliminates this class of failure |
-| Automated installer regression testing (CI on clean VM) | Listed as **HARDEN-05** for Milestone 3 — building it during a hotfix would add risk and delay; smoke-test discipline (`RELEASE-01`) is the v0.7.5 bar |
-| Rewriting `UpdateCheck` as a native (C++) custom action | Considered and rejected — adds maintenance surface; `SelfUpdater` already does the job |
+| Encrypted-at-rest PSK in the public manifest | Considered and explicitly rejected. Every variant is rot13 once the public MSI ships (the decryption key would have to be in the MSI, which is publicly downloadable). See PROJECT.md Key Decisions. WIFI-03 chooses operational security (private-repo + PAT) over cryptographic-theatre. |
+| WPA2-Enterprise / 802.1X / per-device certs | The "real enterprise" answer for Wi-Fi security. Requires a RADIUS server and per-device certificate enrollment. Out of scope for a school fleet without that infrastructure; revisit if Jam Coding ever has the RADIUS infra. |
+| Wi-Fi profile name aliasing or templating | Manifest entries are 1:1 with deployed profiles. No "deploy this profile to schools in group A only" logic. If needed later, lives in M3 or M4. |
+| Storing past PSK versions for rollback | The manifest carries the current desired state; if a rotation goes wrong, edit the manifest back. No git-style snapshot of profile history in Jaminator itself (git history of the private manifest repo provides this for free). |
+| Hardening pass + UX/UI polish | Planned as Milestone 3 — sequencing decision: feature before hardening. |
+| CI / automated installer regression testing | Listed as HARDEN-05 for Milestone 3 |
+| Automating PAT rotation | Listed as HARDEN-07 for Milestone 3 (new from M2) — for v0.8.0 the rotation is manual, same as any other MSI release |
 
 ## Traceability
 
-Which phases cover which requirements.
+Which phases cover which requirements. Filled by the roadmapper.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| INSTALL-01 | Phase 2 | Pending |
-| INSTALL-02 | Phase 2 | Pending |
-| INSTALL-03 | Phase 1 | Pending |
-| INSTALL-04 | Phase 2 | Pending |
-| INSTALL-05 | Phase 2 | Pending |
-| DIAG-01    | Phase 1 | Pending |
-| DIAG-02    | Phase 2 | Pending |
-| RELEASE-01 | Phase 2 | Pending |
-| RELEASE-02 | Phase 3 | Pending |
-| RELEASE-03 | Phase 3 | Pending |
+| WIFI-01 | TBD | Pending |
+| WIFI-02 | TBD | Pending |
+| WIFI-03 | TBD | Pending |
+| WIFI-04 | TBD | Pending |
+| WIFI-05 | TBD | Pending |
 
 **Coverage:**
-- v1 requirements: 10 total
-- Mapped to phases: 10 ✓
-- Unmapped: 0 ✓
+- v1 requirements: 5 total
+- Mapped to phases: 0 (pending roadmap)
+- Unmapped: 5 ⚠️ (will be resolved by roadmapper)
 
 ---
 *Requirements defined: 2026-05-11*
-*Last updated: 2026-05-11 after roadmap creation — traceability table populated*
+*Last updated: 2026-05-11 after WIFI-03 design lock (private manifest repo + PAT-in-MSI) — pre-roadmap*
