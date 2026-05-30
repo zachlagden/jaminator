@@ -114,7 +114,7 @@ The single most consequential research finding is on auth endpoint shape: **`raw
 | Build-time PAT resolution (file → env → fail) | Build script (`installer/build.ps1`) | — | Pure PS logic; no .NET code involved. |
 | Public-manifest schema docs | Documentation (`docs/manifest-schema.md`) | — | Existing doc; extended with new `wifi.profiles[]` section. |
 | Private-secrets schema docs + operator workflow | Documentation (`docs/manifest-schema.md` + `installer/secrets/README.md`) | — | Two audiences: schema in `docs/manifest-schema.md` (developer-facing); operator workflow in `installer/secrets/README.md` (build-operator-facing). |
-| Debug-log emission of joined SSID list | Entry point (`Program.cs`) | Logger | Per CONTEXT.md `<canonical_refs>` block — debug line is emitted immediately after `ManifestFetcher.FetchAsync` returns in `Program.Main()`, NOT inside the fetcher (separation of fetch vs observe). |
+| Debug-log emission of joined SSID list | UI (`MainForm.OnLoad`) | Logger | Debug line is emitted immediately after `MainForm` awaits `ManifestFetcher.FetchAsync()` because `Program.Main` does not invoke `FetchAsync` in UI mode (the only mode that fetches in v0.8.0). `Program.cs` handles the fail-fast guard for placeholder `BuildSecrets.WifiPat` at startup, which is a separate concern. |
 | PSK masking on log emission | DTO override (`WifiProfileEntry.ToString()`) + emission sites | — | Pre-emptive mask in `ToString()` (forward-looking for Phase 3); explicit `***` literal at the Phase 2 emission site. |
 
 ## Standard Stack
@@ -798,24 +798,24 @@ else
 
 **If this table is empty:** N/A — six assumptions logged. All are LOW or MEDIUM risk; A4 is the only one with non-trivial blast radius and has a one-minute verification step.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Should the debug log line ALSO be emitted in `--login-mode` and `--run-all` modes, or only in interactive UI mode?**
+1. **RESOLVED (Plan 02-05):** **Should the debug log line ALSO be emitted in `--login-mode` and `--run-all` modes, or only in interactive UI mode?**
    - What we know: Success Criterion 5 says "verified by a debug log line ... when launched on the dev box." Doesn't specify mode.
    - What's unclear: Whether silent logon-time runs should write this same line to the daily log.
    - Recommendation: Emit it in **all** modes. The log message is harmless (PSKs are masked), and having a single grep-able marker for "fetch completed successfully" is valuable for debugging future logon-time issues. Planner picks the call-site that covers all modes.
 
-2. **What exactly goes in `installer/secrets/wifi-secrets-url.txt`?**
+2. **RESOLVED (Plan 02-02):** **What exactly goes in `installer/secrets/wifi-secrets-url.txt`?** Full URL: `https://api.github.com/repos/{owner}/{repo}/contents/{path}?ref={branch}` for unambiguous fetch.
    - What we know: It's the URL `ManifestFetcher` fetches with the bearer token. The operator writes the value out-of-band.
    - What's unclear: Whether the operator stores the full API URL (`https://api.github.com/repos/.../contents/secrets.json?ref=main`) or just a path fragment (`.../secrets.json?ref=main`) and the code constructs the rest.
    - Recommendation: Full URL. Less ambiguity, less code, less coupling between the operator's understanding of where the file lives and the binary's URL-construction logic. The operator-facing README documents the exact form: `https://api.github.com/repos/<org>/<repo>/contents/<path-to-secrets>?ref=<branch>`.
 
-3. **Does the test SSID survive the dev-laptop smoke test if the laptop is already on it via a manual Windows credential?**
+3. **RESOLVED (Plan 02-05):** **Does the test SSID survive the dev-laptop smoke test if the laptop is already on it via a manual Windows credential?** Plan 02-05 Task 3 is a human-verify checkpoint on the dev box that ties the joined-profile count + masked SSID list to ROADMAP Success Criterion 5 — the log line IS the verification surface; no side-channel confirmation needed.
    - What we know: Phase 2 only verifies the manifest LOAD path, not the deploy path (deploy is Phase 3).
    - What's unclear: Whether the debug log line and joined Manifest in memory is the full Phase 2 verification, or whether some side-channel confirmation is also needed.
    - Recommendation: The debug log line IS the Phase 2 verification. Wi-Fi profile deployment is Phase 3; Phase 2's bar is "the code observes the joined `Manifest` correctly." No netsh invocation in Phase 2.
 
-4. **For the `Generated/` directory, should `installer/build.ps1` emit a stale-removal step that deletes the file at script start?**
+4. **RESOLVED (Plan 02-02):** **For the `Generated/` directory, should `installer/build.ps1` emit a stale-removal step that deletes the file at script start?** No — PowerShell `Set-Content` overwrites in place; Plan 02-02 Task 2 does not include a stale-clean step.
    - What we know: Every build overwrites the file via `Set-Content`.
    - What's unclear: If a previous build left a stale `BuildSecrets.g.cs` with a different PAT, and the current build fails before reaching the `Set-Content` step (e.g., `wix build` fails), is there a risk the developer hand-runs `dotnet build` and picks up the stale PAT?
    - Recommendation: No active deletion needed because `Set-Content` overwrites unconditionally. But add a comment to the operator README: "If you change the PAT, run `installer/build.ps1` end-to-end — don't try to clean up `Generated/` manually."

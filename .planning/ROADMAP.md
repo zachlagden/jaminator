@@ -34,7 +34,12 @@ Decimal phases appear between their surrounding integers in numeric order.
   3. `src/Jaminator/Models/Manifest.cs` defines a `WifiEntry` + `WifiProfileEntry` DTO matching the WIFI-01 schema (SSID, auth mode, hidden, autoConnect, scope, PSK), wired into the top-level `Manifest` class as `wifi`
   4. `src/Jaminator/Services/ManifestFetcher.FetchAsync` performs the dual fetch (public manifest + private secrets), joins SSID→PSK into the in-memory `WifiProfileEntry` list, caches both alongside the existing `manifest.json` cache under `%ProgramData%\Jaminator\cache\`, and falls back to the joined cached pair when offline (login-mode resilience preserved)
   5. `installer/build.ps1` reads the PAT from the local-only source at build time, injects it into the EXE (embedded resource OR `[assembly:]` constant via msbuild property OR companion file written into the MSI payload — implementation detail chosen during planning), and the resulting `Jaminator.exe` / `Jaminator.msi` deserialises and joins the private secrets when launched on the dev box (verified by a debug log line showing the joined profile count and SSID list, PSKs masked)
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 02-01-PLAN.md — feat(manifest): add WifiEntry + WifiProfileEntry DTOs to Manifest model
+- [ ] 02-02-PLAN.md — build(installer): add gitignored secrets directory + PAT/URL resolution + BuildSecrets.g.cs generation
+- [ ] 02-03-PLAN.md — feat(fetcher): dual-fetch public manifest + private secrets with PSK join
+- [ ] 02-04-PLAN.md — docs(manifest-schema): document wifi.profiles[] + private secrets channel + threat model
+- [ ] 02-05-PLAN.md — chore: post-fetch joined-profile debug log line + first-launch fail-fast guard
 
 ### Phase 3: WifiProfileRunner service + run-path integration
 **Goal**: Every manifest-declared Wi-Fi profile is actually deployed onto the laptop via `netsh wlan add profile`, on both the interactive run-all path and the silent login-mode path, with a visible "wifi" section card in the UI matching the existing section pattern.
@@ -82,7 +87,7 @@ Phases execute in numeric order: 2 → 3 → 4 → 5
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 2. Private secrets channel + manifest schema | 0/TBD | Not started | - |
+| 2. Private secrets channel + manifest schema | 0/5 | Planned (5 plans in 3 waves) | - |
 | 3. WifiProfileRunner + run-path integration | 0/TBD | Not started | - |
 | 4. Idempotency, failure isolation, smoke test | 0/TBD | Not started | - |
 | 5. Tag and ship v0.8.0 | 0/TBD | Not started | - |
