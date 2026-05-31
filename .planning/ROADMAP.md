@@ -39,7 +39,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 - [x] 02-02-PLAN.md — build(installer): add gitignored secrets directory + PAT/URL resolution + BuildSecrets.g.cs generation
 - [x] 02-03-PLAN.md — feat(fetcher): dual-fetch public manifest + private secrets with PSK join
 - [x] 02-04-PLAN.md — docs(manifest-schema): document wifi.profiles[] + private secrets channel + threat model
-- [ ] 02-05-PLAN.md — chore: post-fetch joined-profile debug log line + first-launch fail-fast guard
+- [x] 02-05-PLAN.md — chore: post-fetch joined-profile debug log line + first-launch fail-fast guard
 
 ### Phase 3: WifiProfileRunner service + run-path integration
 **Goal**: Every manifest-declared Wi-Fi profile is actually deployed onto the laptop via `netsh wlan add profile`, on both the interactive run-all path and the silent login-mode path, with a visible "wifi" section card in the UI matching the existing section pattern.
