@@ -28,3 +28,11 @@ Thumbs.db
 
 # Installer staging — too big for git, uploaded as Release assets
 /installers-staging/
+
+# Wi-Fi secrets channel — never commit the PAT or the private secrets URL
+installer/secrets/*
+!installer/secrets/.keep
+!installer/secrets/README.md
+
+# Generated build-time secrets — written by installer/build.ps1
+src/Jaminator/Generated/
