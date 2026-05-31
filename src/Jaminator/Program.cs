@@ -34,9 +34,10 @@ namespace Jaminator
             // silent login-mode invocation leaves a diagnostic breadcrumb in
             // %TEMP% instead of 401-ing against GitHub on first launch.
             if (string.IsNullOrEmpty(BuildSecrets.WifiPat)
-                || BuildSecrets.WifiPat == "@@PAT@@")
+                || BuildSecrets.WifiPat == "@@PAT@@"
+                || string.IsNullOrEmpty(BuildSecrets.SecretsUrl))
             {
-                var msg = "Jaminator build is missing the Wi-Fi PAT. Run installer/build.ps1 on a Windows box with installer/secrets/wifi-pat.txt present (or $env:JAMINATOR_WIFI_PAT set) before launching this EXE. See installer/secrets/README.md for setup.";
+                var msg = "Jaminator build is missing the Wi-Fi PAT or secrets URL. Run installer/build.ps1 on a Windows box with installer/secrets/wifi-pat.txt present (or $env:JAMINATOR_WIFI_PAT set) before launching this EXE. See installer/secrets/README.md for setup.";
                 Console.Error.WriteLine(msg);
                 try
                 {

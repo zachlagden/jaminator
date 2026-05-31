@@ -24,6 +24,16 @@ namespace Jaminator.Services
             Timeout = TimeSpan.FromSeconds(15)
         };
 
+        static ManifestFetcher()
+        {
+            // D-14: every request carries a User-Agent. The private fetch sets one
+            // per-request on its HttpRequestMessage; the public GetStringAsync path
+            // has no per-request message, so the shared client needs a default UA
+            // (GitHub rejects UA-less API requests; raw content tolerates it, but the
+            // locked decision requires UA on both).
+            Http.DefaultRequestHeaders.UserAgent.ParseAdd($"Jaminator/{Program.ToolVersion}");
+        }
+
         private static string CachePath
         {
             get
@@ -169,13 +179,25 @@ namespace Jaminator.Services
             var manifestTmp = manifestPath + ".tmp";
             var secretsTmp = secretsPath + ".tmp";
 
-            File.WriteAllText(manifestTmp, publicJson);
-            File.WriteAllText(secretsTmp, secretsJson);
+            try
+            {
+                File.WriteAllText(manifestTmp, publicJson);
+                File.WriteAllText(secretsTmp, secretsJson);
 
-            if (File.Exists(manifestPath)) File.Delete(manifestPath);
-            File.Move(manifestTmp, manifestPath);
-            if (File.Exists(secretsPath)) File.Delete(secretsPath);
-            File.Move(secretsTmp, secretsPath);
+                if (File.Exists(manifestPath)) File.Delete(manifestPath);
+                File.Move(manifestTmp, manifestPath);
+                if (File.Exists(secretsPath)) File.Delete(secretsPath);
+                File.Move(secretsTmp, secretsPath);
+            }
+            finally
+            {
+                // secrets.json.tmp holds plaintext SSID→PSK. A partial failure
+                // (disk full, ACL denial) between the writes and the Moves would
+                // otherwise strand it in %ProgramData% indefinitely. After a
+                // successful Move the .tmp no longer exists, so these are no-ops.
+                try { if (File.Exists(manifestTmp)) File.Delete(manifestTmp); } catch { /* best-effort cleanup */ }
+                try { if (File.Exists(secretsTmp)) File.Delete(secretsTmp); } catch { /* best-effort cleanup */ }
+            }
         }
     }
 }
