@@ -37,7 +37,7 @@ Decimal phases appear between their surrounding integers in numeric order.
 **Plans**: 5 plans
 - [x] 02-01-PLAN.md — feat(manifest): add WifiEntry + WifiProfileEntry DTOs to Manifest model
 - [x] 02-02-PLAN.md — build(installer): add gitignored secrets directory + PAT/URL resolution + BuildSecrets.g.cs generation
-- [ ] 02-03-PLAN.md — feat(fetcher): dual-fetch public manifest + private secrets with PSK join
+- [x] 02-03-PLAN.md — feat(fetcher): dual-fetch public manifest + private secrets with PSK join
 - [x] 02-04-PLAN.md — docs(manifest-schema): document wifi.profiles[] + private secrets channel + threat model
 - [ ] 02-05-PLAN.md — chore: post-fetch joined-profile debug log line + first-launch fail-fast guard
 
