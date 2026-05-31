@@ -14,6 +14,32 @@ namespace Jaminator.Models
         [JsonProperty("commands")] public List<CommandEntry> Commands { get; set; } = new();
         [JsonProperty("cleanup")] public CleanupEntry? Cleanup { get; set; }
         [JsonProperty("schedule")] public ScheduleEntry? Schedule { get; set; }
+        [JsonProperty("wifi")] public WifiEntry? Wifi { get; set; }
+    }
+
+    public sealed class WifiEntry
+    {
+        [JsonProperty("profiles")] public List<WifiProfileEntry> Profiles { get; set; } = new();
+    }
+
+    public sealed class WifiProfileEntry
+    {
+        [JsonProperty("ssid")] public string Ssid { get; set; } = "";
+
+        /// <summary>"WPA2PSK" (default), "WPA3PSK", or "open". String-typed per D-03 to keep manifest authoring forgiving — validated at runtime by the Phase 3 runner.</summary>
+        [JsonProperty("authMode")] public string AuthMode { get; set; } = "WPA2PSK";
+
+        [JsonProperty("hidden")] public bool Hidden { get; set; }
+        [JsonProperty("autoConnect")] public bool AutoConnect { get; set; } = true;
+
+        /// <summary>"all-users" (default) or "current-user". Controls the netsh profile scope.</summary>
+        [JsonProperty("scope")] public string Scope { get; set; } = "all-users";
+
+        /// <summary>
+        /// Pre-shared key. NEVER set from the public manifest — populated in memory by
+        /// ManifestFetcher from the private secrets channel at join time.
+        /// </summary>
+        [JsonProperty("psk")] public string? Psk { get; set; }
     }
 
     public sealed class ScheduleEntry
