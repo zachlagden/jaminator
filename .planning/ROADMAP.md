@@ -35,10 +35,10 @@ Decimal phases appear between their surrounding integers in numeric order.
   4. `src/Jaminator/Services/ManifestFetcher.FetchAsync` performs the dual fetch (public manifest + private secrets), joins SSID→PSK into the in-memory `WifiProfileEntry` list, caches both alongside the existing `manifest.json` cache under `%ProgramData%\Jaminator\cache\`, and falls back to the joined cached pair when offline (login-mode resilience preserved)
   5. `installer/build.ps1` reads the PAT from the local-only source at build time, injects it into the EXE (embedded resource OR `[assembly:]` constant via msbuild property OR companion file written into the MSI payload — implementation detail chosen during planning), and the resulting `Jaminator.exe` / `Jaminator.msi` deserialises and joins the private secrets when launched on the dev box (verified by a debug log line showing the joined profile count and SSID list, PSKs masked)
 **Plans**: 5 plans
-- [ ] 02-01-PLAN.md — feat(manifest): add WifiEntry + WifiProfileEntry DTOs to Manifest model
-- [ ] 02-02-PLAN.md — build(installer): add gitignored secrets directory + PAT/URL resolution + BuildSecrets.g.cs generation
+- [x] 02-01-PLAN.md — feat(manifest): add WifiEntry + WifiProfileEntry DTOs to Manifest model
+- [x] 02-02-PLAN.md — build(installer): add gitignored secrets directory + PAT/URL resolution + BuildSecrets.g.cs generation
 - [ ] 02-03-PLAN.md — feat(fetcher): dual-fetch public manifest + private secrets with PSK join
-- [ ] 02-04-PLAN.md — docs(manifest-schema): document wifi.profiles[] + private secrets channel + threat model
+- [x] 02-04-PLAN.md — docs(manifest-schema): document wifi.profiles[] + private secrets channel + threat model
 - [ ] 02-05-PLAN.md — chore: post-fetch joined-profile debug log line + first-launch fail-fast guard
 
 ### Phase 3: WifiProfileRunner service + run-path integration
