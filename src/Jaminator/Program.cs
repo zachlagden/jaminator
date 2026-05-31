@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Linq;
 using System.Windows.Forms;
 using Jaminator.Services;
@@ -27,6 +28,27 @@ namespace Jaminator
         [STAThread]
         private static int Main(string[] args)
         {
+            // Fail-fast: an EXE built by `dotnet build` directly (bypassing
+            // installer/build.ps1) embeds an empty or placeholder PAT. Catch it
+            // here BEFORE any mode parsing, UI init, or network fetch so a
+            // silent login-mode invocation leaves a diagnostic breadcrumb in
+            // %TEMP% instead of 401-ing against GitHub on first launch.
+            if (string.IsNullOrEmpty(BuildSecrets.WifiPat)
+                || BuildSecrets.WifiPat == "@@PAT@@")
+            {
+                var msg = "Jaminator build is missing the Wi-Fi PAT. Run installer/build.ps1 on a Windows box with installer/secrets/wifi-pat.txt present (or $env:JAMINATOR_WIFI_PAT set) before launching this EXE. See installer/secrets/README.md for setup.";
+                Console.Error.WriteLine(msg);
+                try
+                {
+                    var tempLog = Path.Combine(
+                        Path.GetTempPath(),
+                        $"Jaminator-fail-fast-{DateTime.Now:yyyyMMddHHmmss}.log");
+                    File.WriteAllText(tempLog, $"[{DateTime.Now:yyyy-MM-dd HH:mm:ss}] {msg}{Environment.NewLine}");
+                }
+                catch { /* best-effort breadcrumb — read-only %TEMP% must not crash the guard itself */ }
+                return 1;
+            }
+
             Mode = ParseMode(args);
 
             // Headless ops: run, return exit code, never show UI.

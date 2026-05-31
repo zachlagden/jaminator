@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
+using System.Linq;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using System.Windows.Forms;
@@ -243,6 +244,22 @@ namespace Jaminator.UI
                 _log.Info(fromCache
                     ? $"Manifest version: {_manifest.ManifestVersion} (offline — using cached copy)"
                     : $"Manifest version: {_manifest.ManifestVersion}");
+
+                // Phase 2 observability surface: one Info line with the joined
+                // Wi-Fi profile count, SSID list, and the literal `***` PSK
+                // mask. The SSID-only projection is enforced by the LINQ
+                // expression below — D-15 forbids plaintext keys and any
+                // length-preserving mask in any log emission.
+                if (_manifest.Wifi != null && _manifest.Wifi.Profiles.Count > 0)
+                {
+                    var ssidList = string.Join(", ", _manifest.Wifi.Profiles.Select(p => p.Ssid));
+                    _log.Info($"Joined manifest: {_manifest.Wifi.Profiles.Count} Wi-Fi profile(s) — [{ssidList}] (PSKs: ***){(fromCache ? " (from cache)" : "")}");
+                }
+                else
+                {
+                    _log.Info($"Joined manifest: 0 Wi-Fi profile(s){(fromCache ? " (from cache)" : "")}");
+                }
+
                 _manifestVersionLabel.Text = $"Manifest: {_manifest.ManifestVersion}"
                     + (fromCache ? " (cached)" : "");
                 BuildSections(_manifest);
